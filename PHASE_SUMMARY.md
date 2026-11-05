@@ -83,3 +83,49 @@ Admin-only upload/replace/remove; extension, MIME and size checks plus structura
 
 ## Next phase (Phase 3) requirements
 Apply and test Phase 2, then upload a fresh combined ZIP of the whole project (without `node_modules`, `dist`, `.env`). Phase 3 has **not** been started.
+
+# Phase 3 Summary: AI Photo Virtual Try-On
+
+## Objectives
+Let customers upload a photo, pick an eligible product, and receive a genuinely AI-generated image of themselves wearing it; view/compare, save and delete results. Genlook is the first provider behind a provider-independent architecture. Single-vendor model unchanged; JavaScript only. Phase 4 (AR) not started.
+
+## Implemented (code written)
+Everything in CHANGELOG 0.3.0. Key design decisions:
+- **Genlook API used as documented** (base `https://api.genlook.app/tryon/v1`, `x-api-key`): `POST /images/upload` -> `POST /try-on` -> `GET /generations/:id`; `DELETE /customers/:id`; `GET /account/credits`. Garment photos are sent as multipart bytes, so they never need public URLs.
+- **No automatic retry of the paid call.** Only free calls (upload, status, delete) retry on network/5xx errors. A product is referenced by id first and re-sent inline only on `PRODUCT_NOT_FOUND` (which creates nothing). Customers can manually retry transient failures (max 3 attempts per try-on; Genlook refunds failed generations).
+- **Duplicate/cost protection:** one active try-on per customer (enforced in SQL with a row lock), hourly rate limit, per-customer and store-wide daily caps, local timeout so stuck jobs cannot block anyone.
+- **Privacy:** consent before upload (versioned, provider-specific text, stored with each try-on); private storage; signed short-lived image URLs; no admin access to customer photos; browser removes metadata; retention + cleanup; delete one/all, plus provider erase on delete-all.
+- **No simulation:** with no key (or an unknown provider) the feature reports "unavailable"; test mode is Genlook's own documented mock and is labelled everywhere.
+
+## Verification status
+**Executed in the build environment**
+- 34 backend tests pass: image header parsing (JPEG incl. EXIF rotation, PNG, WebP lossless/extended; rejection of wrong type/tiny/huge/corrupt), signed-URL signing/expiry/tamper checks, private storage and path-traversal rejection, SSRF guard for result URLs, Genlook adapter against a **fake** `fetch` (request shapes, headers, reference-then-inline flow, no retry of paid call, error normalization, no key leakage, status mapping), and 16 service tests with in-memory fakes (consent, unconfigured provider, ineligible product, happy path, polling throttle/dedupe, duplicate request, provider failures, retries and cap, timeout, ownership, save/delete, delete-all, daily limits, retention cleanup). Plus 2 web helper tests.
+- `node --check` of every JS file; esbuild bundling of API entry points and the whole web app (all imports/exports resolve).
+
+**NOT executed - please verify locally**
+- `npm install` / `npm run build:web`: the build environment had no npm registry access, so Vite was **not** run. Phase 2 tests (`garments.*`) and `tryon.routes.test.js` need installed packages (`zod`, `express`) and were not run here.
+- Migration 005 and every SQL query against MySQL 8 (no MySQL available). Includes the row-lock exclusivity logic.
+- **The real Genlook API.** No API key was available. The adapter follows the official docs but has never talked to Genlook; in particular the mixed multipart request (person by `id` plus product images by `fileKey`) and result quality/alignment with `crop=false` are unverified. Use `GENLOOK_TEST_MODE=true` first, then one real try-on.
+- Browser behaviour: file picker/camera, canvas resize, iOS/Android, slider touch dragging, responsive layout at the 15 required widths (layouts are mobile-first but have not been viewed in a browser), accessibility checks.
+- Admin and customer flows end to end, retention timer, `npm run tryon:cleanup`.
+
+## Dependencies
+None added or removed.
+
+## Environment, migrations, API
+See README.md (variables, endpoint table) and `apps/api/.env.example`. Migration: `npm run migrate` (applies `005_create_virtual_tryon.sql`).
+
+## Known limitations
+- **Quality is the provider's:** results are AI approximations (fit, drape and size are not guaranteed); photos of poor quality or heavy layers can fail or look wrong.
+- **No cancel:** Genlook has no cancel endpoint; the UI does not offer one. A try-on abandoned mid-way may still consume a credit.
+- **No per-image provider delete:** only erase-by-user (used by *Delete everything*) or automatic expiry (`GENLOOK_KEEP_DAYS`).
+- **Timeouts:** if we time out locally (default 240 s) but Genlook finishes later, a credit may be used without a stored result.
+- Status is refreshed on demand when the browser polls; if nobody polls, a finished job is collected next time the customer opens it (it must still be within Genlook's retention and our timeout window).
+- Single-server design: locks/dedupe are in-process plus MySQL; running several API instances is fine for the SQL rules, but the in-memory poll de-duplication is per instance.
+- Garment images are not auto-checked for suitability (e.g. a 3D render or a photo with several garments); admin guidance is shown in the UI. Customer photo content (one person, body visible) is not machine-checked.
+- Orphan files (e.g. a crash between writing a file and its database row) are not swept automatically.
+- Camera capture uses the device's native camera via the file input; there is no in-page camera (Phase 4).
+- Genlook-supplied sub-processors/regions are summarised in the consent text from their public policy; you must review their DPA/terms for your jurisdiction.
+
+## Next phase (Phase 4) requirements
+Apply and test Phase 3 (with test mode, then one real try-on), confirm, then upload the full combined project ZIP (no `node_modules`, `dist`, `.env`, `uploads` contents) and request Phase 4. Phase 4 has **not** been started.

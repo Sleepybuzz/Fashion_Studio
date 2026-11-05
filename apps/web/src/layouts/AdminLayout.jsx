@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Boxes, Box, ChevronDown, LayoutDashboard, LogOut, Menu, Package, Settings, Store, Tags, Users, X } from 'lucide-react';
+import { Boxes, Box, ChevronDown, LayoutDashboard, LogOut, Menu, Package, Settings, Sparkles, Store, Tags, Users, X } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore.js';
 
 const items = [
   { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/admin/products', label: 'Products', icon: Package },
   { to: '/admin/3d-assets', label: '3D assets', icon: Box },
+  { to: '/admin/try-on', label: 'Virtual try-on', icon: Sparkles },
   { to: '/admin/categories', label: 'Categories', icon: Tags },
   { to: '/admin/inventory', label: 'Inventory', icon: Boxes },
   { to: '/admin/customers', label: 'Customers', icon: Users },

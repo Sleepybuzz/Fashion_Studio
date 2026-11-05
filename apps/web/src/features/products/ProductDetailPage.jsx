@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Box, Minus, Plus, ShoppingBag } from 'lucide-react';
+import { Box, Minus, Plus, ShoppingBag, Sparkles } from 'lucide-react';
 import ProductImage from '../../components/ImagePlaceholder.jsx';
 import WishlistButton from '../../components/WishlistButton.jsx';
 import { ErrorMessage, Spinner } from '../../components/ui/Feedback.jsx';
@@ -130,6 +130,13 @@ export default function ProductDetailPage() {
                 </button>
                 <p className="text-center text-xs text-muted">No 3D model is available for this product yet.</p>
               </>
+            )}
+            {product.tryOnEligible ? (
+              <Link to={`/try-on/${product.slug}`} className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-brand bg-brand font-medium text-white hover:bg-brand-dark">
+                <Sparkles className="h-4 w-4" aria-hidden="true" />Try it on with AI
+              </Link>
+            ) : (
+              <p className="text-center text-xs text-muted">Virtual try-on is not available for this product.</p>
             )}
           </div>
         </div>

@@ -14,6 +14,10 @@ import { AdminCategories, AdminCustomers, AdminInventory, AdminOverview, AdminSe
 import { AdminProductEditor, AdminProductList } from '../features/admin/ProductsAdmin.jsx';
 import { Spinner } from '../components/ui/Feedback.jsx';
 import SavedDesignsPage from '../features/account/SavedDesignsPage.jsx';
+import MyTryOnsPage from '../features/account/MyTryOnsPage.jsx';
+import VirtualTryOnPage from '../features/virtual-tryon/VirtualTryOnPage.jsx';
+import TryOnSessionPage from '../features/virtual-tryon/TryOnSessionPage.jsx';
+import { AdminTryOnList, AdminTryOnManage } from '../features/admin/AdminTryOn.jsx';
 import { authService } from '../services/store.service.js';
 import { useAuthStore } from '../stores/authStore.js';
 
@@ -55,11 +59,14 @@ export default function App() {
         <Route path="register" element={<RegisterPage />} />
 
         <Route element={<ProtectedRoute role="customer" />}>
+          <Route path="try-on/:slug" element={<VirtualTryOnPage />} />
           <Route path="account" element={<AccountLayout />}>
             <Route index element={<AccountOverview />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="wishlist" element={<WishlistPage />} />
             <Route path="designs" element={<SavedDesignsPage />} />
+            <Route path="try-ons" element={<MyTryOnsPage />} />
+            <Route path="try-ons/:id" element={<TryOnSessionPage />} />
             <Route path="orders" element={<OrdersPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
@@ -75,6 +82,8 @@ export default function App() {
           <Route path="products/:id" element={<AdminProductEditor />} />
           <Route path="3d-assets" element={<AdminGarmentList />} />
           <Route path="3d-assets/:productId" element={<AdminGarmentManage />} />
+          <Route path="try-on" element={<AdminTryOnList />} />
+          <Route path="try-on/:productId" element={<AdminTryOnManage />} />
           <Route path="categories" element={<AdminCategories />} />
           <Route path="inventory" element={<AdminInventory />} />
           <Route path="customers" element={<AdminCustomers />} />

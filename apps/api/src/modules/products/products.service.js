@@ -2,6 +2,7 @@ import { pool, withTransaction } from '../../config/db.js';
 import { notFound, badRequest } from '../../utils/AppError.js';
 import { uniqueSlug } from '../../utils/slug.js';
 import { storageKeyForProduct, unlinkStoredModel } from '../garments/garments.service.js';
+import { catalog as tryOnCatalog } from '../tryon/tryon.index.js';
 
 const SORTS = {
   newest: 'p.created_at DESC, p.id DESC',
@@ -91,9 +92,16 @@ async function hydrate(row) {
   );
   const [variants] = await pool.query('SELECT * FROM product_variants WHERE product_id = ? ORDER BY id', [row.id]);
   const [[{ models }]] = await pool.query('SELECT COUNT(*) AS models FROM garment_assets WHERE product_id = ?', [row.id]);
+  // Phase 3: eligible = active + try-on enabled by the store owner + at least one AI-ready garment photo.
+  const [[{ tryon }]] = await pool.query(
+    `SELECT COUNT(*) AS tryon FROM product_tryon_configs c
+     WHERE c.product_id = ? AND c.enabled = 1 AND EXISTS (SELECT 1 FROM product_tryon_images i WHERE i.product_id = c.product_id)`,
+    [row.id],
+  );
   return {
     ...mapProduct(row),
     has3dModel: Number(models) > 0,
+    tryOnEligible: row.status === 'active' && Number(tryon) > 0,
     images: images.map((i) => ({ id: i.id, url: i.url, altText: i.alt_text })),
     variants: variants.map(mapVariant),
   };
@@ -185,8 +193,10 @@ export async function updateProduct(id, data) {
 
 export async function deleteProduct(id) {
   const modelKey = await storageKeyForProduct(id);
+  const garmentKeys = await tryOnCatalog.collectImageKeys(id);
   const [res] = await pool.query('DELETE FROM products WHERE id = ?', [id]);
   if (!res.affectedRows) throw notFound('Product not found');
-  // The DB row cascades away; also remove the private model file from disk.
+  // The DB rows cascade away; also remove the private model and try-on garment files from disk.
   await unlinkStoredModel(modelKey);
+  await tryOnCatalog.removeStoredKeys(garmentKeys);
 }

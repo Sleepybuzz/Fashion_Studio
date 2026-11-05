@@ -11,6 +11,7 @@ import adminRoutes from './modules/admin/admin.routes.js';
 import storeInfoRoutes from './modules/settings.public.js';
 import { publicRouter as productsPublic, adminRouter as productsAdmin } from './modules/products/products.routes.js';
 import { publicRouter as garmentsPublic, customerRouter as customizationsRouter, adminRouter as garmentsAdmin } from './modules/garments/garments.routes.js';
+import { customerRouter as tryOnCustomer, adminRouter as tryOnAdmin } from './modules/tryon/tryon.routes.js';
 import { publicRouter as categoriesPublic, adminRouter as categoriesAdmin } from './modules/categories/categories.routes.js';
 
 export function createApp() {
@@ -25,7 +26,7 @@ export function createApp() {
   app.use(cors({ origin: env.frontendUrl, credentials: false }));
   app.use(express.json({ limit: '100kb' }));
 
-  // Product images only. Private assets (3D models, future photos) live under uploads/private and are NOT served here.
+  // Product images only. Private assets (3D models, try-on photos/results) live under uploads/private and are NOT served here.
   app.use('/uploads/products', express.static(`${env.uploadDir}/products`, {
     index: false, dotfiles: 'deny', maxAge: '7d', setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff'),
   }));
@@ -47,6 +48,8 @@ export function createApp() {
   app.use('/api/products', productsPublic);
   app.use('/api/garments', garmentsPublic);
   app.use('/api/customizations', customizationsRouter);
+  app.use('/api/tryon', tryOnCustomer);
+  app.use('/api/admin/tryon', tryOnAdmin);
   app.use('/api/admin/garments', garmentsAdmin);
   app.use('/api/admin/products', productsAdmin);
   app.use('/api/admin/categories', categoriesAdmin);

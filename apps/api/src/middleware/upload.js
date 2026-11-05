@@ -69,3 +69,28 @@ export const garmentModelUpload = multer({
     return cb(null, true);
   },
 }).single('model');
+
+// ---------------------------------------------------------------------------
+// Phase 3: virtual try-on image uploads (customer photo, admin garment photos)
+// ---------------------------------------------------------------------------
+
+const TRYON_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+/**
+ * In-memory single-image upload. Nothing touches disk until the content has been verified (real signature,
+ * dimensions) and a server-generated name is chosen. The declared MIME type is only a first filter.
+ * @param {string} field multipart field name
+ * @param {number} maxBytes
+ */
+const memoryImageUpload = (field, maxBytes) => multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: maxBytes, files: 1, fields: 10, fieldSize: 1024 },
+  fileFilter: (_req, file, cb) => (TRYON_MIMES.has(file.mimetype)
+    ? cb(null, true)
+    : cb(badRequest('Only JPEG, PNG or WebP images are allowed'))),
+}).single(field);
+
+/** Customer photo for virtual try-on (multipart field `photo`). */
+export const tryOnPhotoUpload = memoryImageUpload('photo', env.tryon.maxPhotoBytes);
+/** Admin AI-ready garment photo (multipart field `image`). */
+export const tryOnGarmentUpload = memoryImageUpload('image', env.tryon.maxGarmentBytes);

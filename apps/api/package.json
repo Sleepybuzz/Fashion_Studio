@@ -1,6 +1,6 @@
 {
   "name": "@afs/api",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "main": "src/server.js",
@@ -10,7 +10,8 @@
     "migrate": "node scripts/migrate.js",
     "seed": "node scripts/seed.js",
     "test": "node --test \"tests/**/*.test.js\"",
-    "sample:garment": "node scripts/generate-sample-garment.js"
+    "sample:garment": "node scripts/generate-sample-garment.js",
+    "tryon:cleanup": "node scripts/tryon-cleanup.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

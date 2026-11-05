@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.3.0] - Phase 3: AI Photo Virtual Try-On
+
+### Added
+- **Virtual try-on flow** (`/try-on/:slug`): consent first, then photo selection (drag and drop, file picker, camera on touch devices), client-side resize/EXIF-orientation fix/metadata removal, preview, replace/remove, submit. Result page (`/account/try-ons/:id`) with live progress, original-vs-result slider / side by side / result only, save, download, delete, retry.
+- **My try-ons** (`/account/try-ons`): real data from the API, thumbnails, status, expiry, save/unsave, delete one, delete everything.
+- **Provider-independent architecture** (`apps/api/src/modules/tryon/providers`): contract + registry; **Genlook adapter** written against the official REST docs (upload, create, status polling, erase-by-user, credits, documented `mock` test flag). Provider errors are normalized; customers only see safe messages.
+- **Admin Virtual try-on** area: per-product enable switch, 1-4 private garment photos (add/replace/delete), optional AI fit description, provider status panel, 30-day aggregate usage (no customer images), credit balance check.
+- **Backend module `tryon`**: dependency-injected service (consent enforcement, eligibility, image validation by real signature and dimensions, limits, one active try-on per customer, local timeout, on-demand status refresh, private result storage, retention), MySQL repository, signed-URL image streaming, rate limits, maintenance job and `npm run tryon:cleanup`.
+- Migration `005_create_virtual_tryon.sql`: `product_tryon_configs`, `product_tryon_images`, `tryon_sessions` (additive; nothing existing is altered).
+- Product detail page: "Try it on with AI" button for eligible products (honest unavailable text otherwise); products API returns `tryOnEligible`.
+- Tests: 18 + 16 new passing tests (image parsing, signing, storage, Genlook adapter with a fake `fetch`, service state machine); route auth-guard tests added (need `npm install` to run).
+
+### Changed
+- `config/env.js`, `.env.example`: Phase 3 variables (see README). `middleware/upload.js`: in-memory validated uploads for try-on photos/garment photos. `app.js`, `server.js`: mount routes, report provider status at startup, start retention timer. `products.service.js`: `tryOnEligible`; deleting a product also deletes its try-on garment files. Account/admin navigation and routes extended. Package versions 0.3.0.
+
+### Dependencies
+None added (uses Node 20+ built-in `fetch`, `FormData`, `Blob`; existing multer, express-rate-limit, zod).
+
+### Breaking changes
+None. Run `npm run migrate` to apply migration 005.
+
 ## [0.2.0] - Phase 2: 3D Garment Studio and Customization
 
 ### Added

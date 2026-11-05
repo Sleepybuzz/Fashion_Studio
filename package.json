@@ -1,9 +1,9 @@
 {
   "name": "ai-fashion-studio",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "AI Fashion Studio - single-vendor clothing store (Phase 2: 3D Garment Studio)",
+  "description": "AI Fashion Studio - single-vendor clothing store (Phase 3: AI Photo Virtual Try-On)",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -18,6 +18,7 @@
     "seed": "npm run seed -w apps/api",
     "build:web": "npm run build -w apps/web",
     "test": "npm run test -w apps/api",
-    "sample:garment": "npm run sample:garment -w apps/api"
+    "sample:garment": "npm run sample:garment -w apps/api",
+    "tryon:cleanup": "npm run tryon:cleanup -w apps/api"
   }
 }
