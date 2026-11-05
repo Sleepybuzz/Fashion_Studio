@@ -1,0 +1,17 @@
+{
+  "name": "ai-fashion-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AI Fashion Studio - single-vendor clothing store (Phase 1: Foundation)",
+  "workspaces": ["apps/*", "packages/*"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev:api": "npm run dev -w apps/api",
+    "dev:web": "npm run dev -w apps/web",
+    "migrate": "npm run migrate -w apps/api",
+    "seed": "npm run seed -w apps/api",
+    "build:web": "npm run build -w apps/web",
+    "test": "npm run test -w apps/api"
+  }
+}

@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-canvas text-ink font-sans antialiased; overflow-x: hidden; }
+  h1, h2, h3 { @apply font-display; }
+  img { @apply max-w-full; }
+  :focus-visible { outline: 2px solid #7952A3; outline-offset: 2px; }
+}
+
+@layer components {
+  .container-page { @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8; }
+  .h-hero { font-size: clamp(2.25rem, 6vw, 4.5rem); line-height: 1.05; }
+  .h-section { font-size: clamp(1.5rem, 3vw, 2.25rem); line-height: 1.15; }
+  .card { @apply rounded-2xl border border-line bg-white; }
+}
