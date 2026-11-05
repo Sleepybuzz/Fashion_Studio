@@ -41,3 +41,31 @@ export function verifyImageSignature(filePath) {
   const isWebp = buf.subarray(0, 4).toString() === 'RIFF' && buf.subarray(8, 12).toString() === 'WEBP';
   return isJpg || isPng || isWebp;
 }
+
+// ---------------------------------------------------------------------------
+// Phase 2: private 3D garment model uploads (.glb / .gltf)
+// ---------------------------------------------------------------------------
+
+/** Private folder for 3D models. NOT served statically; files are streamed by an authorised route. */
+export const GARMENT_DIR = path.join(env.privateDir, 'garments');
+fs.mkdirSync(GARMENT_DIR, { recursive: true });
+
+const MODEL_FORMATS = { '.glb': 'glb', '.gltf': 'gltf' };
+// Browsers often send application/octet-stream (or an empty type) for .glb; content is verified separately.
+const MODEL_MIMES = new Set(['model/gltf-binary', 'model/gltf+json', 'application/octet-stream', 'application/json', 'application/gltf-buffer', '']);
+
+/** @returns {'glb'|'gltf'|undefined} */
+export const modelFormatFromName = (name) => MODEL_FORMATS[path.extname(String(name)).toLowerCase()];
+
+export const garmentModelUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, GARMENT_DIR),
+    filename: (_req, file, cb) => cb(null, `${crypto.randomUUID()}.${modelFormatFromName(file.originalname)}`),
+  }),
+  limits: { fileSize: env.maxModelBytes, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    if (!modelFormatFromName(file.originalname)) return cb(badRequest('Only .glb or .gltf 3D model files are allowed'));
+    if (!MODEL_MIMES.has(file.mimetype)) return cb(badRequest('Unsupported file type for a 3D model'));
+    return cb(null, true);
+  },
+}).single('model');

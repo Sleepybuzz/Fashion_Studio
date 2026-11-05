@@ -1,12 +1,12 @@
 # AI Fashion Studio
 
-A **single-vendor** clothing store (one Store Owner/Admin, many Customers). This is **Phase 1: Foundation**. 3D studio, AI try-on, AR, AI stylist, cart, checkout and payments are **not** built yet.
+A **single-vendor** clothing store (one Store Owner/Admin, many Customers). Current state: **Phase 2: 3D Garment Studio** on top of the Phase 1 foundation. AI try-on, AR, AI stylist, cart, checkout and payments are **not** built yet.
 
 ## Stack
 
 | Area | Technology |
 |---|---|
-| Web | React 18, Vite 5, Tailwind CSS 3, React Router 6, Zustand, TanStack Query 5, Axios, Lucide React (JavaScript only, `.jsx`) |
+| Web | React 18, Vite 5, Tailwind CSS 3, React Router 6, Zustand, TanStack Query 5, Axios, Lucide React, three.js + React Three Fiber + Drei (JavaScript only, `.jsx`) |
 | API | Node 20+, Express 4, ES Modules, mysql2/promise, JWT (jsonwebtoken), bcryptjs, Zod, helmet, cors, multer |
 | Database | MySQL 8, plain SQL migrations |
 
@@ -15,11 +15,11 @@ A **single-vendor** clothing store (one Store Owner/Admin, many Customers). This
 ```
 AI-Fashion-Studio/
 ├── apps/
-│   ├── api/   (src/config, middleware, modules/{auth,users,products,categories,wishlist,admin}, scripts/, tests/, uploads/)
-│   └── web/   (src/app, components, layouts, features/{auth,products,account,admin,pages}, hooks, services, stores, utils)
-├── database/migrations/   (001..003 .sql)
+│   ├── api/   (src/config, middleware, modules/{auth,users,products,categories,wishlist,admin,garments}, scripts/, tests/, uploads/)
+│   └── web/   (src/app, components, layouts, features/{auth,products,garment-studio,account,admin,pages}, hooks, services, stores, utils)
+├── database/migrations/   (001..004 .sql)
 ├── packages/shared/       (reserved, empty)
-├── docs/
+├── docs/                  (sample-assets/sample-tee-blocky.glb: blocky test model)
 └── CHANGELOG.md, PHASE_SUMMARY.md, DEVELOPMENT_PROGRESS.md
 ```
 
@@ -70,6 +70,7 @@ Other commands: `npm test` (API tests, no database needed), `npm run build:web`.
 | STORAGE_DRIVER | no | `local` only for now |
 | UPLOAD_DIR | no | Upload folder relative to `apps/api` (default `uploads`) |
 | MAX_UPLOAD_MB | no | Max image size (default 5) |
+| MAX_MODEL_MB | no | Max 3D model (.glb/.gltf) size in MB (default 25). Models are stored privately in `UPLOAD_DIR/private/garments` |
 | SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD | optional | Admin account created by `npm run seed` |
 | SEED_CUSTOMER_EMAIL / SEED_CUSTOMER_PASSWORD | optional | Sample customer account |
 
@@ -104,18 +105,44 @@ Do not use development seed values in production. Set `NODE_ENV=production`, pro
 | GET / POST | /admin/categories | admin | |
 | PUT / DELETE | /admin/categories/:id | admin | |
 | POST | /admin/uploads/product-image | admin | multipart field `image`; JPEG/PNG/WebP, size-limited, signature-checked; returns `{url}` |
+| GET | /garments/studio/:slug | – | Studio data for an active product: model URL, style options, colour/material presets. 404 if no model |
+| GET | /garments/assets/:id/file | – | Streams the model file, only for **active** products (private storage, `nosniff`) |
+| GET / POST | /customizations | customer | List own saved designs / save a design |
+| GET / PUT / DELETE | /customizations/:id | customer | Own designs only (others return 404) |
+| GET | /admin/garments | admin | Every product with 3D model status |
+| GET | /admin/garments/product/:productId | admin | Product + model details + style options |
+| PUT | /admin/garments/product/:productId/model | admin | multipart field `model` (.glb/.gltf): upload or replace; content is validated |
+| PATCH | /admin/garments/product/:productId/model | admin | `{customizableMaterials: string[]}` |
+| DELETE | /admin/garments/product/:productId/model | admin | Remove model + style options (saved designs are kept) |
+| GET | /admin/garments/product/:productId/model/file | admin | Authenticated preview download (any product status) |
+| PUT | /admin/garments/product/:productId/options | admin | Replace the product's style options |
 
 Errors: `{ "error": { "message", "details?" } }`.
 
 ## Database
 
 Migrations run in filename order and are recorded in `schema_migrations`:
-`001_create_users_and_addresses.sql`, `002_create_catalogue.sql` (categories, products, images, variants), `003_create_wishlist_and_settings.sql`. There are no brand/vendor tables. The `addresses` table is created now but has no UI/API yet.
+`001_create_users_and_addresses.sql`, `002_create_catalogue.sql` (categories, products, images, variants), `003_create_wishlist_and_settings.sql`, `004_create_garment_studio.sql` (garment_assets, customization_options, customization_values, garment_customizations). There are no brand/vendor tables. The `addresses` table is created now but has no UI/API yet.
 
-## Known limitations (Phase 1)
+## 3D Garment Studio (Phase 2)
+
+**Customers:** open a product with a 3D model and choose *Customize in 3D* (`/studio/:slug`). Rotate, zoom and pan the garment; pick a colour, a material finish and any style options; log in to save designs (`/account/designs`).
+
+**Store owner:** *Admin → 3D assets*. Pick a product, upload a `.glb` (recommended) or self-contained `.gltf`, tick which model materials customers may recolour, and optionally define style options (see below).
+
+Try it without a real model: `npm run sample:garment` writes `docs/sample-assets/sample-tee-blocky.glb` (a blocky test asset, also included). Its nodes are `Body_Regular`, `Body_Cropped`, `Sleeve_Short_L/R`, `Sleeve_Long_L/R`, `Collar_Crew`, `Collar_Wide`; materials `Fabric` and `Trim`. Example options: Sleeves (Short: show `Sleeve_Short_L, Sleeve_Short_R`, hide `Sleeve_Long_L, Sleeve_Long_R`; Long: the reverse), Length, Neckline.
+
+How customization works (honest scope):
+- **Colour / material** change the PBR parameters (colour, roughness, metalness, and sheen where the model supports it) of the materials the store selected. Colour tints existing textures.
+- **Style options** only show/hide named nodes that already exist in the same model file. They cannot reshape the garment. A different cut needs a model that contains it.
+- A GLB is a 3D model, **not** a CLO3D sewing pattern. There is no cloth or drape simulation.
+- Draco and KTX2 compressed models are rejected with a clear message (their decoders would be downloaded from a CDN). Meshopt is supported.
+- Lighting is procedural (no external HDR download). The viewer uses on-demand rendering to save battery.
+
+## Known limitations
 
 - Add to cart, checkout, payments and orders are not implemented (UI is clearly disabled; order history is an honest empty state).
-- 3D studio / customization entry is a disabled "Coming later" control.
+- Phase 2 limits: see the 3D Garment Studio section above and PHASE_SUMMARY.md.
 - JWT is stored in `localStorage` (documented trade-off).
-- Product images are served publicly from `/uploads/products` (intended for catalogue images). Future private assets must use a separate protected path.
+- Product images are served publicly from `/uploads/products` (intended for catalogue images). 3D models use the separate private path described above; customer photos (Phase 3) must do the same.
 - Product search uses `LIKE`.

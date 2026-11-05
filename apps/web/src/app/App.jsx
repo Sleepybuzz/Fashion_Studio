@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { Link, Route, Routes } from 'react-router-dom';
 import StoreLayout from '../layouts/StoreLayout.jsx';
 import AccountLayout from '../layouts/AccountLayout.jsx';
@@ -12,8 +12,15 @@ import { AboutPage, ContactPage } from '../features/pages/StaticPages.jsx';
 import { AccountOverview, OrdersPage, ProfilePage, SettingsPage, WishlistPage } from '../features/account/AccountPages.jsx';
 import { AdminCategories, AdminCustomers, AdminInventory, AdminOverview, AdminSettings } from '../features/admin/AdminPages.jsx';
 import { AdminProductEditor, AdminProductList } from '../features/admin/ProductsAdmin.jsx';
+import { Spinner } from '../components/ui/Feedback.jsx';
+import SavedDesignsPage from '../features/account/SavedDesignsPage.jsx';
 import { authService } from '../services/store.service.js';
 import { useAuthStore } from '../stores/authStore.js';
+
+// The 3D code (three.js) is only downloaded when the studio or the admin 3D screens are opened.
+const GarmentStudioPage = lazy(() => import('../features/garment-studio/GarmentStudioPage.jsx'));
+const AdminGarmentList = lazy(() => import('../features/admin/AdminGarments.jsx').then((m) => ({ default: m.AdminGarmentList })));
+const AdminGarmentManage = lazy(() => import('../features/admin/AdminGarments.jsx').then((m) => ({ default: m.AdminGarmentManage })));
 
 function NotFound() {
   return (
@@ -35,11 +42,13 @@ export default function App() {
   }, [token]);
 
   return (
+    <Suspense fallback={<Spinner label="Loading…" className="py-32" />}>
     <Routes>
       <Route element={<StoreLayout />}>
         <Route index element={<HomePage />} />
         <Route path="shop" element={<ShopPage />} />
         <Route path="shop/:slug" element={<ProductDetailPage />} />
+        <Route path="studio/:slug" element={<GarmentStudioPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="contact" element={<ContactPage />} />
         <Route path="login" element={<LoginPage />} />
@@ -50,6 +59,7 @@ export default function App() {
             <Route index element={<AccountOverview />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="wishlist" element={<WishlistPage />} />
+            <Route path="designs" element={<SavedDesignsPage />} />
             <Route path="orders" element={<OrdersPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
@@ -63,6 +73,8 @@ export default function App() {
           <Route path="products" element={<AdminProductList />} />
           <Route path="products/new" element={<AdminProductEditor />} />
           <Route path="products/:id" element={<AdminProductEditor />} />
+          <Route path="3d-assets" element={<AdminGarmentList />} />
+          <Route path="3d-assets/:productId" element={<AdminGarmentManage />} />
           <Route path="categories" element={<AdminCategories />} />
           <Route path="inventory" element={<AdminInventory />} />
           <Route path="customers" element={<AdminCustomers />} />
@@ -70,5 +82,6 @@ export default function App() {
         </Route>
       </Route>
     </Routes>
+    </Suspense>
   );
 }

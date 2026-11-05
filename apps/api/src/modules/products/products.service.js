@@ -1,6 +1,7 @@
 import { pool, withTransaction } from '../../config/db.js';
 import { notFound, badRequest } from '../../utils/AppError.js';
 import { uniqueSlug } from '../../utils/slug.js';
+import { storageKeyForProduct, unlinkStoredModel } from '../garments/garments.service.js';
 
 const SORTS = {
   newest: 'p.created_at DESC, p.id DESC',
@@ -89,8 +90,10 @@ async function hydrate(row) {
     [row.id],
   );
   const [variants] = await pool.query('SELECT * FROM product_variants WHERE product_id = ? ORDER BY id', [row.id]);
+  const [[{ models }]] = await pool.query('SELECT COUNT(*) AS models FROM garment_assets WHERE product_id = ?', [row.id]);
   return {
     ...mapProduct(row),
+    has3dModel: Number(models) > 0,
     images: images.map((i) => ({ id: i.id, url: i.url, altText: i.alt_text })),
     variants: variants.map(mapVariant),
   };
@@ -181,6 +184,9 @@ export async function updateProduct(id, data) {
 }
 
 export async function deleteProduct(id) {
+  const modelKey = await storageKeyForProduct(id);
   const [res] = await pool.query('DELETE FROM products WHERE id = ?', [id]);
   if (!res.affectedRows) throw notFound('Product not found');
+  // The DB row cascades away; also remove the private model file from disk.
+  await unlinkStoredModel(modelKey);
 }

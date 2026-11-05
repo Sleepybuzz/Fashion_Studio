@@ -32,3 +32,54 @@ Cart/checkout/payments/orders not implemented; 3D studio entry disabled; JWT in 
 
 ## Next phase (Phase 2) requirements
 Upload the combined project ZIP (without `node_modules`, `dist` or `.env`) after you have applied and tested Phase 1. Phase 2 has **not** been started.
+
+# Phase 2 Summary: 3D Garment Studio and Customization
+
+## Objectives
+Let customers view supported products in 3D and customize them; let the store owner manage 3D assets; save and reopen customer designs. Single-vendor model unchanged; JavaScript only.
+
+## Implemented (code written)
+- 3D viewer, customization panel, studio page, saved designs, admin 3D assets, backend `garments` module, migration 004. Details in CHANGELOG 0.2.0 and README ("3D Garment Studio").
+- Style options are node show/hide inside one GLB (a technically valid approach that needs the model to contain every variant). Colour/material are PBR parameter changes on admin-selected materials.
+
+## Verification status
+**Executed in the build environment**
+- `node --test tests/garments.logic.test.js`: **11/11 passing**. Covers GLB inspection (valid sample, bad header, truncated, wrong version, Draco/KTX2/unknown extensions, external buffers/textures, self-contained .gltf, invalid JSON), node-name sanitising, saved-design validation, presets, Zod schemas.
+- Syntax/JSX parse check (esbuild transform) of **every** `.js` and `.jsx` file in `apps/api` and `apps/web`: no errors. This checks syntax only, not imports or runtime behaviour.
+
+**NOT executed: please verify locally** (the build environment had no network or MySQL, so dependencies could not be installed)
+- `npm install`, `npm run build:web`, `npm test` (the existing Phase 1 tests and the new `garments.routes.test.js`, which needs Express installed).
+- Migration 004 and every SQL query against MySQL 8.
+- The 3D viewer in a browser: model loading, mouse/touch/pinch, zoom/reset/auto-rotate buttons, colour/material/option changes, WebGL-lost handling, rendering quality and exact colours.
+- Admin upload / replace / remove and preview end to end; saving, reopening, renaming and deleting designs; ownership checks with two customer accounts.
+- Responsive review at the viewport list in the master prompt (layouts are mobile-first but have not been viewed).
+- Behaviour with real CLO3D/Blender exports (rigged meshes, large textures).
+Expect the possibility of small integration bugs on first run; send the error output and they can be fixed.
+
+## Dependencies
+Added (web): `three@^0.169.0`, `@react-three/fiber@^8.17.10` (React 18 compatible), `@react-three/drei@^9.114.3`. None removed. API: none. Install: `npm install` from the project root.
+
+## Environment variables
+New, optional: `MAX_MODEL_MB` (default 25) in `apps/api/.env`. Models are stored in `UPLOAD_DIR/private/garments` (git-ignored, never served statically). No new web variables.
+
+## Database
+New migration `004_create_garment_studio.sql` (additive; no existing table touched). Run `npm run migrate`. No seed changes.
+
+## API
+See README endpoint table. New: `/api/garments/*` (public), `/api/customizations/*` (customer role), `/api/admin/garments/*` (admin). Modified: product detail responses include `has3dModel`.
+
+## Security notes
+Admin-only upload/replace/remove; extension, MIME and size checks plus structural validation of the file; random server-side file names; private storage; models served only for active products (admin preview via authenticated route); `nosniff`; saved designs filtered by `user_id` in SQL (other users' ids return 404); configurations validated server-side against real options and presets.
+
+## Known limitations
+- GLB is a 3D model, not a CLO3D pattern; no cloth simulation or fabric physics. Material presets are approximations.
+- Style options cannot change geometry; they toggle parts already in the file. Node names must be unique and named in the 3D tool.
+- Colour tints existing textures. Sheen only on materials with the glTF sheen extension. Unlit materials are not editable.
+- Draco and KTX2 compressed files are rejected. `.gltf` must be self-contained. Tune very heavy models (the admin screen warns above 300k triangles).
+- One model per product. Replacing a model keeps customizable materials that still exist and warns about options whose nodes vanished.
+- Guest choices survive login only within the same browser session (sessionStorage).
+- Public model URLs of active products are fetchable without login (needed for the storefront viewer); they are not directory-listable.
+- Rate limiting of public asset requests, cart/checkout and later-phase features are not part of this phase.
+
+## Next phase (Phase 3) requirements
+Apply and test Phase 2, then upload a fresh combined ZIP of the whole project (without `node_modules`, `dist`, `.env`). Phase 3 has **not** been started.

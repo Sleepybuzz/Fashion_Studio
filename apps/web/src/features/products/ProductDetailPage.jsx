@@ -119,10 +119,18 @@ export default function ProductDetailPage() {
               <ShoppingBag className="h-4 w-4" aria-hidden="true" />Add to cart
             </button>
             <p className="text-center text-xs text-muted">Cart and checkout are coming in a later release. Ordering is not available yet.</p>
-            <button disabled aria-disabled="true" className="flex h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-full border border-line bg-white opacity-60">
-              <Box className="h-4 w-4" aria-hidden="true" />3D Studio &amp; customization
-              <span className="rounded-full bg-sand px-2 py-0.5 text-xs">Coming later</span>
-            </button>
+            {product.has3dModel ? (
+              <Link to={`/studio/${product.slug}`} className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-brand bg-white font-medium text-brand hover:bg-brand hover:text-white">
+                <Box className="h-4 w-4" aria-hidden="true" />Customize in 3D
+              </Link>
+            ) : (
+              <>
+                <button disabled aria-disabled="true" className="flex h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-full border border-line bg-white opacity-60">
+                  <Box className="h-4 w-4" aria-hidden="true" />Customize in 3D
+                </button>
+                <p className="text-center text-xs text-muted">No 3D model is available for this product yet.</p>
+              </>
+            )}
           </div>
         </div>
       </div>

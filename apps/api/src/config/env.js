@@ -28,6 +28,9 @@ export const env = {
   storageDriver: e.STORAGE_DRIVER || 'local',
   uploadDir: path.resolve(API_ROOT, e.UPLOAD_DIR || 'uploads'),
   maxUploadBytes: (Number(e.MAX_UPLOAD_MB) || 5) * 1024 * 1024,
+  // Phase 2: private storage for 3D garment models (never served statically).
+  privateDir: path.join(path.resolve(API_ROOT, e.UPLOAD_DIR || 'uploads'), 'private'),
+  maxModelBytes: (Number(e.MAX_MODEL_MB) || 25) * 1024 * 1024,
   seed: {
     adminEmail: e.SEED_ADMIN_EMAIL || '',
     adminPassword: e.SEED_ADMIN_PASSWORD || '',
