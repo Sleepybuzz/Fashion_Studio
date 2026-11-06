@@ -129,3 +129,58 @@ See README.md (variables, endpoint table) and `apps/api/.env.example`. Migration
 
 ## Next phase (Phase 4) requirements
 Apply and test Phase 3 (with test mode, then one real try-on), confirm, then upload the full combined project ZIP (no `node_modules`, `dist`, `.env`, `uploads` contents) and request Phase 4. Phase 4 has **not** been started.
+
+
+---
+
+# Phase 4 Summary: Real-Time AR Try-On
+
+## Objectives
+Browser-based live AR preview: camera -> MediaPipe pose landmarks -> garment (3D model or 2D overlay) following the shoulders and torso, with customization, screenshot capture and optional private saving. Phases 1-3 unchanged; AI Photo Try-On (Genlook adapter) not touched.
+
+## Implemented (code written)
+- Web: `features/ar-tryon/` (`ArTryOnPage`, `ArWorkspace`, `ArScene`, `ArCustomizePanel`, `CapturePreview`, `arMath`, `cameraUtils`, `useCamera`, `usePoseTracking`, `poseTracker`, `captureUtils`), `features/account/MyArCapturesPage.jsx`, `features/admin/AdminAr.jsx`, `services/ar.service.js`, `scripts/setup-mediapipe.mjs`.
+- API: `modules/ar/` (`ar.constants`, `ar.alpha`, `ar.schemas`, `ar.service`, `ar.index`, `ar.routes`), migration `006`.
+- Design decision: **no per-session table**. A live AR session has no server-side state (tracking is local), so recording camera starts would be unnecessary data. Only `product_ar_configs` (settings + overlay metadata) and `ar_captures` (screenshots the customer chose to save, with consent version/time) are persisted. `tryon_sessions` is untouched.
+- AR is viewable without an account (nothing leaves the device); saving needs a customer login. Admin accounts cannot save customer screenshots.
+
+## Files
+**New:** `database/migrations/006_create_ar_tryon.sql`; `apps/api/src/modules/ar/*` (6 files); `apps/api/tests/{ar.unit.test.js, ar.integration.test.js, helpers/images.js}`; `apps/web/src/features/ar-tryon/*` (13 files incl. 2 test files); `apps/web/src/features/account/MyArCapturesPage.jsx`; `apps/web/src/features/admin/AdminAr.jsx`; `apps/web/src/services/ar.service.js`; `apps/web/scripts/setup-mediapipe.mjs`.
+**Modified:** `package.json`, `package-lock.json`, `apps/api/package.json`, `apps/web/package.json`, `.gitignore`, `apps/api/.env.example`, `apps/web/.env.example`, `apps/api/src/{app.js,server.js,config/env.js,middleware/upload.js,modules/tryon/tryon.storage.js,modules/products/products.service.js}`, `apps/web/src/{app/App.jsx,layouts/AccountLayout.jsx,layouts/AdminLayout.jsx,features/products/ProductDetailPage.jsx,features/garment-studio/GarmentViewer.jsx}`, README.md, CHANGELOG.md, PHASE_SUMMARY.md, DEVELOPMENT_PROGRESS.md.
+**Deleted:** none.
+
+## Verification status
+**Actually executed in the build environment**
+- API: full suite `npm test` = 70 pass + 8 skipped (integration) / **78 pass with `AFS_INTEGRATION=1`**, 0 fail. This includes the 59 pre-existing Phase 1-3 tests.
+- **Migrations 001-006 applied to a real MySQL 8.0.46** (clean database), including 006. Seed ran.
+- **Integration tests (real MySQL + real Express over HTTP):** overlay validation (opaque / JPEG / too small rejected, transparent accepted, file name sanitised, random storage key); enable rules (3D needs a model, ranges); public endpoint hides drafts and never leaks storage keys; `arEligible` flag; 3D mode eligibility follows the Phase 2 model (upload/remove) and the Phase 2 studio endpoint still works; saving needs login, customer role, consent, valid image bytes (SVG/garbage refused, nothing written to disk on rejection), eligible product; signed URL (tamper `u`, other customer, expiry), `dl=1` download header; ownership isolation on list/delete; per-customer cap with no orphan files; retention purge; delete-all; product deletion removes the overlay file and keeps the customer's capture (product -> NULL); removing the active overlay auto-disables AR.
+- Web: 20 tests pass (tracking maths incl. mirrored/cover coordinate mapping, roll/yaw signs, partial/lost states, smoothing and spike damping, garment profiles, camera error classification) + `vite build` succeeds (AR page 46 kB, MediaPipe 155 kB as separate lazy chunks) + server-side render check of the customize panel (controls hidden when unsupported).
+- Verified against the installed MediaPipe 1.2.2 type definitions: `FilesetResolver`, `PoseLandmarker.createFromOptions`, `detectForVideo(video, ts)` and the options used.
+
+**NOT executed (you must test on real devices)**
+- Any real camera, `getUserMedia` permission flow, camera switching, device rotation.
+- MediaPipe inference in a browser (the pose model could not be downloaded in the sandbox; wasm/model loading, GPU delegate, real landmark quality).
+- WebGL rendering of the garment, alignment of the overlay with the video on real hardware, the screenshot composition (canvas) and its browser compatibility.
+- Responsive review at the 15 widths / orientations in the master prompt: the layout is written for it (full-screen stage + dock; side panel on `lg`; side panel in short landscape; `dvh` and safe-area insets) but was **not** visually checked.
+- HTTPS behaviour, performance on low-end phones, Phase 2/3 pages in a browser (their backend tests pass; the UI was only built, not opened). Genlook against the live API (as in Phase 3).
+
+## Dependencies
+Added: `@mediapipe/tasks-vision@1.2.2` (apps/web). `npm install` from the project root.
+
+## Environment, migrations, API
+See README (new variables are all optional; **no API key is needed for AR**). Migration `006_create_ar_tryon.sql` via `npm run migrate`. New endpoints under `/api/ar/*` and `/api/admin/ar/*` (table in README).
+
+## Security and privacy notes
+Camera only after an explicit button press; tracks stopped on exit/pagehide/error; no frames or landmarks leave the device; screenshot upload needs preview + consent checkbox + login; magic-byte/dimension validation, size limits, memory upload (nothing on disk before validation), random file names, private storage, HMAC-signed expiring URLs with a distinct signature kind, ownership in SQL, per-customer cap and hourly rate limit, parameterized queries, Zod validation.
+
+## Known limitations
+- Rigid overlay only: no cloth simulation, draping, size/measurement, per-person fit, photorealism, or occlusion (arms are drawn behind the garment). Upper-body garments only (`top`, `outerwear`); one person; front-facing poses work best. Yaw (turning) is approximate and damped; strong turns look wrong.
+- Quality depends on the asset: GLB must be upright/forward-facing; overlay images must be straight-on. Calibrate with the two sliders and test on a device. A model whose file contains hidden style nodes is sized from the whole file.
+- 2D overlays have no colour customization. Captured screenshots are mirrored for the front camera (as seen on screen).
+- MediaPipe model/wasm come from this site if `npm run setup:ar` succeeded, else from jsDelivr / Google's model host at runtime (static files only).
+- Two MediaPipe copies exist in `node_modules` (drei's older one). Harmless; the AR code uses 1.2.2.
+- Capture composition scales to <= 1440 px on the long side; very old browsers without `canvas.toBlob` are not supported.
+- Account deletion (not implemented in any phase) must also remove `uploads/private/ar/captures`.
+
+## Next phase (Phase 5) requirements
+Apply and test Phase 4 on a real phone and a laptop (HTTPS for phone), confirm, then upload the full combined project ZIP (no `node_modules`, `dist`, `.env`, uploads contents, `apps/web/public/mediapipe`).

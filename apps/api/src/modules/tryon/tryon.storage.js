@@ -11,11 +11,13 @@ export const isValidStorageKey = (key) => typeof key === 'string' && KEY_RE.test
  * Private on-disk storage for try-on images (customer photos, generated results, admin garment photos).
  * The root is NOT served statically; files are streamed by authorised/signed routes only.
  * File names are server-generated random UUIDs, so client-provided names never touch the file system.
+ * Phase 4 reuses this factory (with its own root and kinds) for AR captures and overlays.
  * @param {string} rootDir
+ * @param {readonly string[]} [kinds] allowed sub-folders (defaults to the try-on kinds)
  */
-export function createTryOnStorage(rootDir) {
+export function createTryOnStorage(rootDir, kinds = STORAGE_KINDS) {
   const dirFor = (kind) => {
-    if (!STORAGE_KINDS.includes(kind)) throw new Error(`Unknown storage kind: ${kind}`);
+    if (!kinds.includes(kind)) throw new Error(`Unknown storage kind: ${kind}`);
     return path.join(rootDir, kind);
   };
   const fileFor = (kind, key) => {

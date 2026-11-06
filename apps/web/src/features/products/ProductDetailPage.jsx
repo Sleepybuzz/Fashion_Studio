@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Box, Minus, Plus, ShoppingBag, Sparkles } from 'lucide-react';
+import { Box, Camera, Minus, Plus, ShoppingBag, Sparkles } from 'lucide-react';
 import ProductImage from '../../components/ImagePlaceholder.jsx';
 import WishlistButton from '../../components/WishlistButton.jsx';
 import { ErrorMessage, Spinner } from '../../components/ui/Feedback.jsx';
@@ -132,11 +132,24 @@ export default function ProductDetailPage() {
               </>
             )}
             {product.tryOnEligible ? (
-              <Link to={`/try-on/${product.slug}`} className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-brand bg-brand font-medium text-white hover:bg-brand-dark">
-                <Sparkles className="h-4 w-4" aria-hidden="true" />Try it on with AI
-              </Link>
+              <>
+                <Link to={`/try-on/${product.slug}`} className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-brand bg-brand font-medium text-white hover:bg-brand-dark">
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />AI Photo Try-On
+                </Link>
+                <p className="text-center text-xs text-muted">Upload a photo and an AI service creates a realistic picture of the item on you.</p>
+              </>
             ) : (
-              <p className="text-center text-xs text-muted">Virtual try-on is not available for this product.</p>
+              <p className="text-center text-xs text-muted">AI Photo Try-On is not available for this product.</p>
+            )}
+            {product.arEligible ? (
+              <>
+                <Link to={`/ar-try-on/${product.slug}`} className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-brand bg-white font-medium text-brand hover:bg-brand hover:text-white">
+                  <Camera className="h-4 w-4" aria-hidden="true" />Real-Time AR Try-On
+                </Link>
+                <p className="text-center text-xs text-muted">A live, approximate preview on your camera. It stays on your device and is not a realistic fitting.</p>
+              </>
+            ) : (
+              <p className="text-center text-xs text-muted">Real-Time AR Try-On is not available for this product.</p>
             )}
           </div>
         </div>

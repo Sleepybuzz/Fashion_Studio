@@ -3,6 +3,7 @@ import { notFound, badRequest } from '../../utils/AppError.js';
 import { uniqueSlug } from '../../utils/slug.js';
 import { storageKeyForProduct, unlinkStoredModel } from '../garments/garments.service.js';
 import { catalog as tryOnCatalog } from '../tryon/tryon.index.js';
+import { arService } from '../ar/ar.index.js';
 
 const SORTS = {
   newest: 'p.created_at DESC, p.id DESC',
@@ -102,6 +103,8 @@ async function hydrate(row) {
     ...mapProduct(row),
     has3dModel: Number(models) > 0,
     tryOnEligible: row.status === 'active' && Number(tryon) > 0,
+    // Phase 4: eligible = active + AR enabled + the asset its mode needs exists (3D model or transparent overlay).
+    arEligible: await arService.isEligible(row.id),
     images: images.map((i) => ({ id: i.id, url: i.url, altText: i.alt_text })),
     variants: variants.map(mapVariant),
   };
@@ -194,9 +197,11 @@ export async function updateProduct(id, data) {
 export async function deleteProduct(id) {
   const modelKey = await storageKeyForProduct(id);
   const garmentKeys = await tryOnCatalog.collectImageKeys(id);
+  const overlayKeys = await arService.collectOverlayKeys(id);
   const [res] = await pool.query('DELETE FROM products WHERE id = ?', [id]);
   if (!res.affectedRows) throw notFound('Product not found');
   // The DB rows cascade away; also remove the private model and try-on garment files from disk.
   await unlinkStoredModel(modelKey);
   await tryOnCatalog.removeStoredKeys(garmentKeys);
+  await arService.removeStoredOverlayKeys(overlayKeys);
 }

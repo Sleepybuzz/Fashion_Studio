@@ -1,6 +1,7 @@
 import { assertServerConfig, env } from './config/env.js';
 import { createApp } from './app.js';
 import { reportTryOnConfig, startTryOnMaintenance } from './modules/tryon/tryon.index.js';
+import { startArMaintenance } from './modules/ar/ar.index.js';
 
 try {
   assertServerConfig();
@@ -11,6 +12,7 @@ try {
 
 reportTryOnConfig();
 startTryOnMaintenance();
+startArMaintenance();
 
 const app = createApp();
 app.listen(env.port, () => {

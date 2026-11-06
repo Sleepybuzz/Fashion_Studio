@@ -1,12 +1,12 @@
 # AI Fashion Studio
 
-A **single-vendor** clothing store (one Store Owner/Admin, many Customers). Current state: **Phase 3: AI Photo Virtual Try-On** on top of Phases 1 (foundation) and 2 (3D Garment Studio). Real-time AR, AI stylist, cart, checkout and payments are **not** built yet.
+A **single-vendor** clothing store (one Store Owner/Admin, many Customers). Current state: **Phase 4: Real-Time AR Try-On** on top of Phases 1 (foundation), 2 (3D Garment Studio) and 3 (AI Photo Virtual Try-On). AI stylist, cart, checkout and payments are **not** built yet.
 
 ## Stack
 
 | Area | Technology |
 |---|---|
-| Web | React 18, Vite 5, Tailwind CSS 3, React Router 6, Zustand, TanStack Query 5, Axios, Lucide React, three.js + React Three Fiber + Drei (JavaScript only, `.jsx`) |
+| Web | React 18, Vite 5, Tailwind CSS 3, React Router 6, Zustand, TanStack Query 5, Axios, Lucide React, three.js + React Three Fiber + Drei, MediaPipe Tasks Vision (JavaScript only, `.jsx`) |
 | API | Node 20+, Express 4, ES Modules, mysql2/promise, JWT (jsonwebtoken), bcryptjs, Zod, helmet, cors, multer |
 | Database | MySQL 8, plain SQL migrations |
 
@@ -15,9 +15,9 @@ A **single-vendor** clothing store (one Store Owner/Admin, many Customers). Curr
 ```
 AI-Fashion-Studio/
 ├── apps/
-│   ├── api/   (src/config, middleware, modules/{auth,users,products,categories,wishlist,admin,garments,tryon}, scripts/, tests/, uploads/)
-│   └── web/   (src/app, components, layouts, features/{auth,products,garment-studio,virtual-tryon,account,admin,pages}, hooks, services, stores, utils)
-├── database/migrations/   (001..005 .sql)
+│   ├── api/   (src/config, middleware, modules/{auth,users,products,categories,wishlist,admin,garments,tryon,ar}, scripts/, tests/, uploads/)
+│   └── web/   (src/app, components, layouts, features/{auth,products,garment-studio,virtual-tryon,ar-tryon,account,admin,pages}, hooks, services, stores, utils)
+├── database/migrations/   (001..006 .sql)
 ├── packages/shared/       (reserved, empty)
 ├── docs/                  (sample-assets/sample-tee-blocky.glb: blocky test model)
 └── CHANGELOG.md, PHASE_SUMMARY.md, DEVELOPMENT_PROGRESS.md
@@ -82,10 +82,14 @@ Other commands: `npm test` (API tests, no database needed), `npm run build:web`.
 | TRYON_TIMEOUT_SECONDS | no | Unfinished try-ons are marked failed after this long (default 240) |
 | TRYON_UNSAVED_RETENTION_DAYS / TRYON_SAVED_RETENTION_DAYS | no | How long **we** keep results: 7 / 90 days |
 | TRYON_SIGNED_URL_TTL_SECONDS | no | Lifetime of signed image URLs (default 1800) |
+| MAX_AR_CAPTURE_MB / MAX_AR_OVERLAY_MB | no | Phase 4: max size of a saved AR screenshot / admin overlay image (default 4 each, max 10) |
+| AR_CAPTURE_RETENTION_DAYS | no | Phase 4: days before a saved AR screenshot is deleted automatically (default 90) |
+| AR_MAX_CAPTURES_PER_USER / AR_CAPTURE_HOURLY_LIMIT | no | Phase 4: saved screenshots per customer (default 30) / saves per customer per hour (default 30) |
+| AR_SIGNED_URL_TTL_SECONDS | no | Phase 4: lifetime of signed screenshot URLs (default 1800) |
 | SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD | optional | Admin account created by `npm run seed` |
 | SEED_CUSTOMER_EMAIL / SEED_CUSTOMER_PASSWORD | optional | Sample customer account |
 
-`apps/web/.env`: `VITE_API_URL` (default http://localhost:5000).
+`apps/web/.env`: `VITE_API_URL` (default http://localhost:5000). Optional (Phase 4): `VITE_MEDIAPIPE_WASM_URL`, `VITE_MEDIAPIPE_MODEL_URL` to load the tracking files from your own location. The AR try-on needs **no API key**.
 
 If seed variables are blank, account seeding is skipped with a message.
 
@@ -141,14 +145,24 @@ Do not use development seed values in production. Set `NODE_ENV=production`, pro
 | PATCH | /admin/tryon/products/:productId | admin | `{enabled, aiDescription}` |
 | POST / PUT / DELETE | /admin/tryon/products/:productId/images[/:imageId] | admin | multipart `image`: add / replace / delete a garment photo (max 4) |
 
-`GET /products/:slug` now also returns `tryOnEligible`.
+| GET | /ar/products/:slug | public | AR settings of an AR-eligible active product (404 otherwise). No account needed: nothing leaves the device |
+| GET | /ar/overlays/:productId/file | public | Transparent overlay image of an AR-eligible active product (private storage, `nosniff`) |
+| GET | /ar/assets/capture/:id?exp&u&sig | signed URL | Streams a saved screenshot. HMAC-signed (kind `arcapture`), expires, ownership re-checked |
+| GET / POST | /ar/captures | customer | List own saved screenshots / save one: multipart `image` + `productId`, `consent=true`, `consentVersion=ar-v1`, optional `config` (JSON colour/material/style). Returns `201 {capture}`. Rate-limited |
+| DELETE | /ar/captures/:id, /ar/captures | customer | Delete one / all own screenshots (files removed from disk) |
+| GET | /admin/ar/products, /admin/ar/products/:productId | admin | AR readiness / one product's AR settings |
+| PATCH | /admin/ar/products/:productId | admin | `{enabled, garmentType: top\|outerwear, assetMode: model3d\|overlay2d, scaleAdjust 0.5-1.6, offsetYAdjust -0.3..0.3}` |
+| PUT / DELETE | /admin/ar/products/:productId/overlay | admin | multipart `overlay` (PNG/WebP **with transparency**) / remove (switches AR off if it was the active asset) |
+| GET | /admin/ar/products/:productId/overlay/file | admin | Authenticated overlay preview (any product status) |
+
+`GET /products/:slug` now also returns `tryOnEligible` and `arEligible`.
 
 Errors: `{ "error": { "message", "details?" } }`.
 
 ## Database
 
 Migrations run in filename order and are recorded in `schema_migrations`:
-`001_create_users_and_addresses.sql`, `002_create_catalogue.sql` (categories, products, images, variants), `003_create_wishlist_and_settings.sql`, `004_create_garment_studio.sql` (garment_assets, customization_options, customization_values, garment_customizations), `005_create_virtual_tryon.sql` (product_tryon_configs, product_tryon_images, tryon_sessions). There are no brand/vendor tables. The `addresses` table is created now but has no UI/API yet.
+`001_create_users_and_addresses.sql`, `002_create_catalogue.sql` (categories, products, images, variants), `003_create_wishlist_and_settings.sql`, `004_create_garment_studio.sql` (garment_assets, customization_options, customization_values, garment_customizations), `005_create_virtual_tryon.sql` (product_tryon_configs, product_tryon_images, tryon_sessions), `006_create_ar_tryon.sql` (product_ar_configs, ar_captures). There are no brand/vendor tables. The `addresses` table is created now but has no UI/API yet.
 
 ## 3D Garment Studio (Phase 2)
 
@@ -190,7 +204,49 @@ Implement the contract in `apps/api/src/modules/tryon/providers/provider.contrac
 - Genlook's published policy states no AI training on customer photos and no facial recognition, with sub-processors that include non-EU infrastructure. **Review Genlook's Terms and DPA (https://genlook.app/dpa) and update your own privacy policy before going live.** This is not legal advice.
 - Photos are resized and re-encoded in the browser, which removes GPS/camera metadata.
 
+## Real-Time AR Try-On (Phase 4)
+
+Customers open an eligible product, press **Real-Time AR Try-On**, read what will happen, press **Start camera** and allow the browser prompt. A garment (the product's Phase 2 3D model, or a transparent 2D image) then follows their shoulders and torso on the live camera picture. They can change supported colours/materials/style options, take a screenshot, preview it, and optionally save it privately.
+
+### What it is, and is not
+- **Is:** MediaPipe Pose Landmarker (running in the browser, on the customer's device) -> shoulder-anchored position, size, tilt (roll) and a rough turn (yaw) -> a rigid garment drawn with three.js in a pixel-space orthographic layer on top of the video. One-Euro smoothing, a short hold when tracking drops, guidance messages, front/rear camera switch, mirrored preview with matching coordinate mapping, screenshot composition (video + garment).
+- **Is not:** cloth simulation, draping, size or body measurement, per-person fit, photorealism, or occlusion (arms are never shown in front of the garment). It is a quick visual preview, and the UI says so. For a realistic picture the customer uses **AI Photo Try-On** (Phase 3, separate workflow and provider).
+- Garment types: **top** and **outerwear** only (different positioning profiles). Bottoms, dresses and shoes are not offered because they need other landmarks and assets.
+
+### Setup
+```powershell
+npm install                      # installs @mediapipe/tasks-vision 1.2.2 for the web app
+npm run migrate                  # applies 006_create_ar_tryon.sql
+npm run setup:ar                 # copies the MediaPipe wasm files and downloads the pose model into apps/web/public/mediapipe (also runs before dev/build)
+```
+If `setup:ar` cannot download the model (offline/firewall) the app downloads the wasm from jsDelivr and the model from Google's public model host when a customer opens AR. Only those static files are fetched from there; no camera data is sent. To self-host everything, save `pose_landmarker_lite.task` to `apps/web/public/mediapipe/models/` (see the message printed by the script) and keep `apps/web/public/mediapipe/` in your deployment.
+
+### Camera, HTTPS and browsers
+- Browsers only allow camera access on **HTTPS** pages (and `http://localhost` during development). Production must use HTTPS. Testing on a phone against your PC (`http://192.168.x.x:5173`) will be blocked by the browser: use an HTTPS tunnel or deploy to an HTTPS host.
+- The camera starts only after the customer presses **Start camera**, and every track is stopped on exit, page hide and errors.
+- Needs WebGL and WebAssembly (current Chrome, Edge, Safari 16+, Firefox). The page checks this before asking for the camera and explains what is missing. GPU inference is tried first, CPU as a fallback. Low-end devices get a notice and a lower-resolution render.
+
+### Preparing AR assets (Admin -> AR try-on)
+- **3D model mode:** reuse the product's GLB/GLTF (3D assets). Upright, facing forward (+Z), symmetric, with sleeves included work best. Size is taken from the whole file (hidden style nodes included) so toggling options never rescales it. The model is not deformed.
+- **2D overlay mode:** transparent PNG/WebP (cut-out garment, front view, 400-4096 px, up to 4 MB). Opaque images and JPEGs are rejected (checked from the file header; an image that merely has an alpha channel but is fully opaque is still accepted, use the admin preview).
+- Two calibration sliders per product: size (x0.5-1.6) and vertical position. Test each garment on a real device and adjust.
+- AR is live for a product only when it is **active**, AR is **enabled**, and the chosen asset exists.
+
+### Privacy, retention and deletion
+- No video is recorded or uploaded; landmarks are not stored; no third-party AI service ever receives camera images.
+- A screenshot is uploaded only after the customer previews it, ticks the consent box and presses *Save*. It is stored privately under `UPLOAD_DIR/private/ar/captures`, served only through short-lived signed URLs bound to the owner, and deleted after `AR_CAPTURE_RETENTION_DAYS` (default 90; the API cleans up hourly) or when the customer deletes it (*My account -> AR captures*, one or all). There is no admin route that shows customer screenshots.
+- Saved data per capture: customer, product (name/slug snapshot), asset mode, the on-screen customization (3D only), consent version/time, expiry, image file. Update your own privacy policy before going live. This is not legal advice.
+- Deleting a customer account is not implemented in any phase yet; when it is, it must also delete `uploads/private/ar/captures` and `uploads/private/tryon` files of that customer.
+
+### Tests
+```powershell
+npm test                                   # API unit tests (no database needed)
+$env:AFS_INTEGRATION="1"; npm test         # also runs the AR integration tests against YOUR MySQL (needs migrate + seed)
+npm run test:web                           # AR math, camera helpers, photo helpers
+```
+
 ## Known limitations
+- Phase 4: see PHASE_SUMMARY.md. Live camera tracking, MediaPipe inference and WebGL rendering were not run in the build environment (no browser or camera); test on real devices.
 
 - Phase 3: see PHASE_SUMMARY.md (provider integration written to the official docs but not run against the live API in the build environment).
 

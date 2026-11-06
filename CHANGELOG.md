@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.4.0] - Phase 4: Real-Time AR Try-On
+
+### Added
+- **Real-Time AR Try-On** (`/ar-try-on/:slug`, lazy-loaded): intro screen explaining privacy and the difference from AI Photo Try-On, explicit **Start camera** step, live camera with a shoulder-anchored garment overlay, tracking status and guidance, front/rear camera switch, "show tracking points" debug toggle, screenshot capture, preview, download, discard or save, exit (Esc / button).
+- **Body tracking in the browser** with MediaPipe Pose Landmarker (`@mediapipe/tasks-vision` 1.2.2, GPU then CPU delegate): shoulders, elbows, wrists, hips; confidence/in-frame checks; One-Euro smoothing; 500 ms hold when tracking drops, reset after a longer gap; distance / hips-hidden / shoulders-hidden guidance; adaptive detection rate and a low-performance notice. Camera frames are never sent anywhere.
+- **Garment rendering** (three.js / R3F, pixel-space orthographic layer, on-demand rendering): Phase 2 GLB/GLTF models (reusing the Phase 2 model preparation, visibility and colour/material code) and transparent 2D overlays, with garment-type profiles (`top`, `outerwear`) and per-product size / vertical calibration.
+- **Customization in AR**: colour, material finish and style options of the Phase 2 studio, reset to original. Controls appear only when the model supports them (no editable material -> no colour controls; image overlays -> none).
+- **Saved AR captures**: preview before saving, explicit consent (`ar-v1`), private storage, signed URLs, per-customer limit, retention (default 90 days) with hourly cleanup, delete one/all (`/account/ar-captures`).
+- **Admin -> AR try-on** (`/admin/ar`, `/admin/ar/:productId`): enable per product, choose 3D model or 2D overlay, garment type, size/vertical sliders, upload/replace/remove a transparent overlay with a checkerboard preview.
+- **Camera robustness**: classified errors (permission denied, no camera, camera busy, insecure context, camera lost, unsupported browser) with recovery steps; tracks stopped on exit, pagehide and errors; WebGL context-loss and asset-load recovery.
+- Backend module `ar`: dependency-injected service, routes, Zod schemas, alpha-channel detection for overlays; migration `006_create_ar_tryon.sql` (`product_ar_configs`, `ar_captures`).
+- `scripts/setup-mediapipe.mjs` (`npm run setup:ar`): copies wasm and downloads the pose model for self-hosting; app falls back to official public hosts.
+- Tests: 11 AR unit tests + 8 integration tests (real MySQL + HTTP) on the API; 18 web tests (tracking maths, coordinate mapping/mirroring, smoothing, placement, camera helpers).
+
+### Changed
+- Product page now offers **AI Photo Try-On** and **Real-Time AR Try-On** as two clearly explained options; `GET /products/:slug` returns `arEligible`.
+- `GarmentViewer.jsx`: exported `prepareModel`, `applyVisibility`, `applyLook`, `disposeGltf`, `pendingDispose` (no behaviour change) so AR reuses Phase 2 logic instead of duplicating it.
+- `tryon.storage.js`: `createTryOnStorage(rootDir, kinds?)` accepts custom folders (default unchanged); `middleware/upload.js`, `config/env.js`, `app.js`, `server.js` (AR upload helpers, env, routes, cleanup timer); `products.service.js` (eligibility flag; deleting a product also deletes its overlay file). Account/admin navigation and routes extended. Versions 0.4.0.
+
+### Dependencies
+Added `@mediapipe/tasks-vision@1.2.2` (apps/web). Nothing removed. Note: `@react-three/drei` already bundles its own older copy (0.10.x) in the repo root; the AR code and setup script use the apps/web copy.
+
+### Breaking changes
+None. Run `npm install`, `npm run migrate` (applies 006), optionally `npm run setup:ar`.
+
 ## [0.3.0] - Phase 3: AI Photo Virtual Try-On
 
 ### Added

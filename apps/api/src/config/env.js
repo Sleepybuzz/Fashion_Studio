@@ -68,6 +68,17 @@ export const env = {
     savedRetentionDays: intEnv(e.TRYON_SAVED_RETENTION_DAYS, 90, { min: 1, max: 3650 }),
     signedUrlTtlSeconds: intEnv(e.TRYON_SIGNED_URL_TTL_SECONDS, 1800, { min: 60, max: 86400 }),
   },
+  // Phase 4: real-time AR try-on. Body tracking runs in the browser; the server only stores screenshots the
+  // customer chooses to save (private storage) and the store owner's transparent garment overlays.
+  ar: {
+    dir: path.join(privateRoot, 'ar'),
+    maxCaptureBytes: intEnv(e.MAX_AR_CAPTURE_MB, 4, { min: 1, max: 10 }) * 1024 * 1024,
+    maxOverlayBytes: intEnv(e.MAX_AR_OVERLAY_MB, 4, { min: 1, max: 10 }) * 1024 * 1024,
+    retentionDays: intEnv(e.AR_CAPTURE_RETENTION_DAYS, 90, { min: 1, max: 3650 }),
+    maxCapturesPerUser: intEnv(e.AR_MAX_CAPTURES_PER_USER, 30, { min: 1, max: 500 }),
+    hourlySaveLimit: intEnv(e.AR_CAPTURE_HOURLY_LIMIT, 30, { min: 1, max: 1000 }),
+    signedUrlTtlSeconds: intEnv(e.AR_SIGNED_URL_TTL_SECONDS, 1800, { min: 60, max: 86400 }),
+  },
 };
 
 /**

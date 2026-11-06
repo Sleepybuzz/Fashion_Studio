@@ -18,11 +18,15 @@ import MyTryOnsPage from '../features/account/MyTryOnsPage.jsx';
 import VirtualTryOnPage from '../features/virtual-tryon/VirtualTryOnPage.jsx';
 import TryOnSessionPage from '../features/virtual-tryon/TryOnSessionPage.jsx';
 import { AdminTryOnList, AdminTryOnManage } from '../features/admin/AdminTryOn.jsx';
+import MyArCapturesPage from '../features/account/MyArCapturesPage.jsx';
+import { AdminArList, AdminArManage } from '../features/admin/AdminAr.jsx';
 import { authService } from '../services/store.service.js';
 import { useAuthStore } from '../stores/authStore.js';
 
 // The 3D code (three.js) is only downloaded when the studio or the admin 3D screens are opened.
 const GarmentStudioPage = lazy(() => import('../features/garment-studio/GarmentStudioPage.jsx'));
+// Phase 4: three.js + MediaPipe are only downloaded when a customer opens the AR page.
+const ArTryOnPage = lazy(() => import('../features/ar-tryon/ArTryOnPage.jsx'));
 const AdminGarmentList = lazy(() => import('../features/admin/AdminGarments.jsx').then((m) => ({ default: m.AdminGarmentList })));
 const AdminGarmentManage = lazy(() => import('../features/admin/AdminGarments.jsx').then((m) => ({ default: m.AdminGarmentManage })));
 
@@ -53,6 +57,7 @@ export default function App() {
         <Route path="shop" element={<ShopPage />} />
         <Route path="shop/:slug" element={<ProductDetailPage />} />
         <Route path="studio/:slug" element={<GarmentStudioPage />} />
+        <Route path="ar-try-on/:slug" element={<ArTryOnPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="contact" element={<ContactPage />} />
         <Route path="login" element={<LoginPage />} />
@@ -67,6 +72,7 @@ export default function App() {
             <Route path="designs" element={<SavedDesignsPage />} />
             <Route path="try-ons" element={<MyTryOnsPage />} />
             <Route path="try-ons/:id" element={<TryOnSessionPage />} />
+            <Route path="ar-captures" element={<MyArCapturesPage />} />
             <Route path="orders" element={<OrdersPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
@@ -84,6 +90,8 @@ export default function App() {
           <Route path="3d-assets/:productId" element={<AdminGarmentManage />} />
           <Route path="try-on" element={<AdminTryOnList />} />
           <Route path="try-on/:productId" element={<AdminTryOnManage />} />
+          <Route path="ar" element={<AdminArList />} />
+          <Route path="ar/:productId" element={<AdminArManage />} />
           <Route path="categories" element={<AdminCategories />} />
           <Route path="inventory" element={<AdminInventory />} />
           <Route path="customers" element={<AdminCustomers />} />

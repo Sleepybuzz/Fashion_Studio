@@ -18,7 +18,7 @@ const hasWebGL = () => {
 };
 
 /** Release GPU resources of a loaded glTF and drop it from the loader cache. */
-function disposeGltf(gltf, url) {
+export function disposeGltf(gltf, url) {
   gltf.scene.traverse((o) => {
     if (!o.isMesh) return;
     o.geometry?.dispose();
@@ -29,7 +29,7 @@ function disposeGltf(gltf, url) {
   });
   useGLTF.clear(url);
 }
-const pendingDispose = new WeakMap();
+export const pendingDispose = new WeakMap();
 
 const readableProp = (m, key) => (m[key] && m[key].isColor ? m[key].clone() : m[key]);
 
@@ -37,7 +37,7 @@ const readableProp = (m, key) => (m[key] && m[key].isColor ? m[key].clone() : m[
  * Clone the cached glTF scene (so edits never leak into the cache), give every mesh its own
  * material clone, remember each material's original look, and compute a framing transform.
  */
-function prepareModel(gltf) {
+export function prepareModel(gltf) {
   const scene = cloneScene(gltf.scene); // SkeletonUtils.clone also handles skinned (rigged) garments
   const map = new Map();
   scene.traverse((o) => {
@@ -71,7 +71,7 @@ function prepareModel(gltf) {
 }
 
 /** Show/hide named nodes. Resets to the file's own visibility first so switching values is deterministic. */
-function applyVisibility(scene, rules) {
+export function applyVisibility(scene, rules) {
   scene.traverse((o) => { o.visible = o.userData.afsBaseVisible; });
   const byName = new Map();
   scene.traverse((o) => { if (o.name && !byName.has(o.name)) byName.set(o.name, o); });
@@ -85,7 +85,7 @@ function applyVisibility(scene, rules) {
  * Apply colour + material preset to the customizable materials only.
  * Returns how many materials were editable so the UI can explain when nothing is.
  */
-function applyLook(materials, { colorHex, preset, materialNames }) {
+export function applyLook(materials, { colorHex, preset, materialNames }) {
   let editable = 0;
   let sheenCapable = 0;
   for (const m of materials) {

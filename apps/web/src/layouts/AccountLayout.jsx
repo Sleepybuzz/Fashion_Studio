@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { Box, Heart, LayoutDashboard, Package, Settings, Sparkles, UserCircle } from 'lucide-react';
+import { Box, Camera, Heart, LayoutDashboard, Package, Settings, Sparkles, UserCircle } from 'lucide-react';
 
 const items = [
   { to: '/account', label: 'Overview', icon: LayoutDashboard, end: true },
@@ -7,6 +7,7 @@ const items = [
   { to: '/account/wishlist', label: 'Wishlist', icon: Heart },
   { to: '/account/designs', label: '3D designs', icon: Box },
   { to: '/account/try-ons', label: 'Try-ons', icon: Sparkles },
+  { to: '/account/ar-captures', label: 'AR captures', icon: Camera },
   { to: '/account/orders', label: 'Orders', icon: Package },
   { to: '/account/settings', label: 'Settings', icon: Settings },
 ];

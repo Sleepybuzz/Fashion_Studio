@@ -94,3 +94,12 @@ const memoryImageUpload = (field, maxBytes) => multer({
 export const tryOnPhotoUpload = memoryImageUpload('photo', env.tryon.maxPhotoBytes);
 /** Admin AI-ready garment photo (multipart field `image`). */
 export const tryOnGarmentUpload = memoryImageUpload('image', env.tryon.maxGarmentBytes);
+
+// ---------------------------------------------------------------------------
+// Phase 4: AR try-on uploads (customer screenshot, admin transparent garment overlay)
+// ---------------------------------------------------------------------------
+
+/** Screenshot the customer chose to save (multipart field `image`). Same in-memory, verify-before-write approach as Phase 3. */
+export const arCaptureUpload = memoryImageUpload('image', env.ar.maxCaptureBytes);
+/** Admin transparent garment overlay (multipart field `overlay`). */
+export const arOverlayUpload = memoryImageUpload('overlay', env.ar.maxOverlayBytes);
