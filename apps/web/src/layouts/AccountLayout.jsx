@@ -6,6 +6,7 @@ const items = [
   { to: '/account/profile', label: 'Profile', icon: UserCircle },
   { to: '/account/wishlist', label: 'Wishlist', icon: Heart },
   { to: '/account/designs', label: '3D designs', icon: Box },
+  { to: '/account/ai-designs', label: 'AI designs', icon: Sparkles },
   { to: '/account/try-ons', label: 'Try-ons', icon: Sparkles },
   { to: '/account/ar-captures', label: 'AR captures', icon: Camera },
   { to: '/account/orders', label: 'Orders', icon: Package },

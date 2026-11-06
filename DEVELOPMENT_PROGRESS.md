@@ -1,9 +1,9 @@
 # Development Progress
 
 ## Status
-- Overall: Phase 4 delivered, pending owner testing (especially on real devices).
+- Overall: Phase 5 delivered, pending owner testing (live providers, MySQL migration 007, browsers).
 - Completed phases (owner-confirmed): none confirmed yet. Phases 1-3 were delivered earlier; Phase 4 was built on the uploaded Phase 1+2+3 project.
-- Current phase: 4 of 7. Phases 5-7 not started.
+- Current phase: 5 of 7. Phases 6-7 not started.
 
 ## Structure
 See README.md. New in Phase 4: `apps/api/src/modules/ar/` (constants, alpha, schemas, service, index, routes), `apps/web/src/features/ar-tryon/` (page, workspace, scene, customize panel, capture preview, `arMath`, `cameraUtils`, `useCamera`, `usePoseTracking`, `poseTracker`, `captureUtils`, tests), `apps/web/src/features/account/MyArCapturesPage.jsx`, `apps/web/src/features/admin/AdminAr.jsx`, `apps/web/src/services/ar.service.js`, `apps/web/scripts/setup-mediapipe.mjs`, `database/migrations/006_create_ar_tryon.sql`.
@@ -36,3 +36,9 @@ Not executed: camera, MediaPipe inference in a browser, WebGL rendering and alig
 
 ## Requirements for next phase
 Apply and test Phase 4 on a phone (HTTPS) and a laptop, confirm, then upload the full combined project ZIP (no `node_modules`, `dist`, `.env`, uploads contents, `apps/web/public/mediapipe`) and request Phase 5 (AI Personal Stylist).
+
+
+## Phase 5 (AI Chat Customization)
+- Built on the Phase 1-4 project. Migration 007 added. Providers: Gemini (chat), Cloudflare FLUX.1 Kontext Pro (image), Genlook (try-on), each switchable by env.
+- Verified here: unit tests, Vite build, SQL syntax parse. Not verified: live providers, MySQL migration, browser behaviour. See PHASE_SUMMARY.md.
+- Next: owner tests Phase 5, then Phase 6.

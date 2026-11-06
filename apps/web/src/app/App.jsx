@@ -24,6 +24,9 @@ import { authService } from '../services/store.service.js';
 import { useAuthStore } from '../stores/authStore.js';
 
 // The 3D code (three.js) is only downloaded when the studio or the admin 3D screens are opened.
+const CustomizeStartPage = lazy(() => import('../features/ai-customize/CustomizeStartPage.jsx'));
+const CustomizeSessionPage = lazy(() => import('../features/ai-customize/CustomizeSessionPage.jsx'));
+const MyAiDesignsPage = lazy(() => import('../features/ai-customize/MyAiDesignsPage.jsx'));
 const GarmentStudioPage = lazy(() => import('../features/garment-studio/GarmentStudioPage.jsx'));
 // Phase 4: three.js + MediaPipe are only downloaded when a customer opens the AR page.
 const ArTryOnPage = lazy(() => import('../features/ar-tryon/ArTryOnPage.jsx'));
@@ -64,12 +67,17 @@ export default function App() {
         <Route path="register" element={<RegisterPage />} />
 
         <Route element={<ProtectedRoute role="customer" />}>
+          <Route path="try-on/custom/:versionId" element={<VirtualTryOnPage custom />} />
           <Route path="try-on/:slug" element={<VirtualTryOnPage />} />
+          <Route path="customize/product/:slug" element={<CustomizeStartPage mode="product" />} />
+          <Route path="customize/upload" element={<CustomizeStartPage mode="upload" />} />
+          <Route path="customize/session/:id" element={<CustomizeSessionPage />} />
           <Route path="account" element={<AccountLayout />}>
             <Route index element={<AccountOverview />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="wishlist" element={<WishlistPage />} />
             <Route path="designs" element={<SavedDesignsPage />} />
+            <Route path="ai-designs" element={<MyAiDesignsPage />} />
             <Route path="try-ons" element={<MyTryOnsPage />} />
             <Route path="try-ons/:id" element={<TryOnSessionPage />} />
             <Route path="ar-captures" element={<MyArCapturesPage />} />

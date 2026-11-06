@@ -29,6 +29,8 @@
  * @property {() => ProviderDescription} describe
  * @property {(input: SubmitTryOnInput) => Promise<{jobId:string}>} submitTryOn   MUST NOT be retried automatically (paid)
  * @property {(jobId: string) => Promise<NormalizedStatus>} getStatus
+ * @property {(input: SubmitTryOnInput) => Promise<{jobId:string}>} generateTryOn   alias of submitTryOn (Phase 5 contract name)
+ * @property {(jobId: string) => Promise<NormalizedStatus>} getTryOnStatus            alias of getStatus (Phase 5 contract name)
  * @property {(externalUserId: string) => Promise<void>} deleteUserData
  * @property {() => Promise<{balance:number}|null>} [getCredits]
  *
@@ -75,7 +77,8 @@ export class ProviderError extends Error {
   }
 }
 
-const REQUIRED = ['configIssue', 'isConfigured', 'describe', 'submitTryOn', 'getStatus', 'deleteUserData'];
+// generateTryOn / getTryOnStatus are the Phase 5 contract names for submitTryOn / getStatus (adapters expose both).
+const REQUIRED = ['configIssue', 'isConfigured', 'describe', 'submitTryOn', 'getStatus', 'generateTryOn', 'getTryOnStatus', 'deleteUserData'];
 
 /**
  * Fail fast if an adapter does not implement the contract.

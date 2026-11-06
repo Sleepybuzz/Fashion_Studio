@@ -10,7 +10,7 @@ import { verifyAsset } from './signing.js';
 import { EXT_FOR_MIME } from './tryon.constants.js';
 import { catalog, signingKey, storage, tryOnService as svc } from './tryon.index.js';
 import {
-  assetParamsSchema, assetQuerySchema, configBodySchema, createSessionSchema, imageParamsSchema,
+  assetParamsSchema, assetQuerySchema, customVersionParamSchema, configBodySchema, createSessionSchema, imageParamsSchema,
   listQuerySchema, productIdParamSchema, savedBodySchema, uuidParamSchema,
 } from './tryon.schemas.js';
 
@@ -55,6 +55,10 @@ customerRouter.get('/config', asyncHandler(async (req, res) => {
   res.json(await svc.getPublicConfig(req.user));
 }));
 
+customerRouter.get('/eligibility/custom/:versionId', validate(customVersionParamSchema, 'params'), asyncHandler(async (req, res) => {
+  res.json(await svc.getCustomEligibility(req.user, req.validated.params.versionId));
+}));
+
 customerRouter.get('/eligibility/:slug', asyncHandler(async (req, res) => {
   res.json(await svc.getEligibility(String(req.params.slug).slice(0, 220)));
 }));
@@ -70,6 +74,7 @@ customerRouter.post('/sessions', createLimiter, tryOnPhotoUpload, validate(creat
   const session = await svc.createSession({
     user: req.user, // identity comes from the JWT only; a client-supplied user id is never read
     productId: req.body.productId,
+    customizationVersionId: req.body.customizationVersionId,
     consent: req.body.consent,
     consentVersion: req.body.consentVersion,
     photo: req.file,

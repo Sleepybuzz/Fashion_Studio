@@ -4,6 +4,8 @@ import { api } from './api.js';
 export const tryOnService = {
   config: () => api.get('/tryon/config').then((r) => r.data),
   eligibility: (slug) => api.get(`/tryon/eligibility/${encodeURIComponent(slug)}`).then((r) => r.data),
+  /** Phase 5: eligibility of a customized design (a generated garment image) instead of a store product. */
+  customEligibility: (versionId) => api.get(`/tryon/eligibility/custom/${encodeURIComponent(versionId)}`).then((r) => r.data),
   list: (params) => api.get('/tryon/sessions', { params }).then((r) => r.data),
   get: (id) => api.get(`/tryon/sessions/${id}`).then((r) => r.data.session),
   /** @param {FormData} form fields: photo, productId, consent, consentVersion */

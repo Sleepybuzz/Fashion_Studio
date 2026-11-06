@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Box, Camera, Minus, Plus, ShoppingBag, Sparkles } from 'lucide-react';
+import { Box, Camera, MessageSquareText, Minus, Plus, ShoppingBag, Sparkles } from 'lucide-react';
 import ProductImage from '../../components/ImagePlaceholder.jsx';
 import WishlistButton from '../../components/WishlistButton.jsx';
 import { ErrorMessage, Spinner } from '../../components/ui/Feedback.jsx';
+import { aiService } from '../../services/ai.service.js';
 import { catalogService } from '../../services/store.service.js';
 import { useStoreInfo } from '../../hooks/useStore.js';
 import { formatPrice } from '../../utils/format.js';
@@ -20,6 +21,8 @@ export default function ProductDetailPage() {
   const [size, setSize] = useState('');
   const [color, setColor] = useState('');
   const [qty, setQty] = useState(1);
+
+  const aiStatus = useQuery({ queryKey: ['ai-status'], queryFn: aiService.status, staleTime: 60000, retry: false });
 
   const sizes = useMemo(() => [...new Set((product?.variants || []).map((v) => v.size).filter(Boolean))], [product]);
   const colors = useMemo(() => {
@@ -130,6 +133,11 @@ export default function ProductDetailPage() {
                 </button>
                 <p className="text-center text-xs text-muted">No 3D model is available for this product yet.</p>
               </>
+            )}
+            {product.aiCustomizeEligible && aiStatus.data?.customizationAvailable && (
+              <Link to={`/customize/product/${product.slug}`} className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-brand bg-white font-medium text-brand hover:bg-brand hover:text-white">
+                <MessageSquareText className="h-4 w-4" aria-hidden="true" />AI Chat &amp; Customize This Product
+              </Link>
             )}
             {product.tryOnEligible ? (
               <>

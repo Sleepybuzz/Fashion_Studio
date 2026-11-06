@@ -147,6 +147,29 @@ export function createGenlookProvider(cfg, { fetchImpl = globalThis.fetch } = {}
     return out.generationId;
   }
 
+  async function submitTryOn({ externalUserId, photo, garment }) {
+    assertConfigured();
+    const imageId = await uploadPhoto(photo, externalUserId);
+    const jobId = await createGeneration(imageId, garment, externalUserId);
+    return { jobId };
+  }
+
+  async function getStatus(jobId) {
+    assertConfigured();
+    const out = await call('GET', `/generations/${encodeURIComponent(jobId)}`, { retries: 2 });
+    switch (out?.status) {
+      case 'COMPLETED':
+        if (!out.resultImageUrl) return { state: 'failed', errorCode: E.GENERATION_FAILED, providerErrorCode: 'NO_RESULT_URL' };
+        return { state: 'completed', resultUrl: out.resultImageUrl };
+      case 'FAILED':
+        return { state: 'failed', errorCode: mapGenlookError(out.errorCode, 200), providerErrorCode: out.errorCode || 'UNKNOWN' };
+      case 'PROCESSING':
+        return { state: 'processing' };
+      default: // PENDING or an unknown future status: keep waiting; the local timeout still applies
+        return { state: 'pending' };
+    }
+  }
+
   return {
     id: 'genlook',
     configIssue,
@@ -165,28 +188,11 @@ export function createGenlookProvider(cfg, { fetchImpl = globalThis.fetch } = {}
       ],
     }),
 
-    async submitTryOn({ externalUserId, photo, garment }) {
-      assertConfigured();
-      const imageId = await uploadPhoto(photo, externalUserId);
-      const jobId = await createGeneration(imageId, garment, externalUserId);
-      return { jobId };
-    },
-
-    async getStatus(jobId) {
-      assertConfigured();
-      const out = await call('GET', `/generations/${encodeURIComponent(jobId)}`, { retries: 2 });
-      switch (out?.status) {
-        case 'COMPLETED':
-          if (!out.resultImageUrl) return { state: 'failed', errorCode: E.GENERATION_FAILED, providerErrorCode: 'NO_RESULT_URL' };
-          return { state: 'completed', resultUrl: out.resultImageUrl };
-        case 'FAILED':
-          return { state: 'failed', errorCode: mapGenlookError(out.errorCode, 200), providerErrorCode: out.errorCode || 'UNKNOWN' };
-        case 'PROCESSING':
-          return { state: 'processing' };
-        default: // PENDING or an unknown future status: keep waiting; the local timeout still applies
-          return { state: 'pending' };
-      }
-    },
+    submitTryOn,
+    getStatus,
+    // Phase 5 contract names (ai/providers/tryon/tryon-provider.contract.js). Same functions, so Phase 3 callers are untouched.
+    generateTryOn: submitTryOn,
+    getTryOnStatus: getStatus,
 
     async deleteUserData(externalUserId) {
       assertConfigured();

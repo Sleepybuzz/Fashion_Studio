@@ -79,6 +79,34 @@ export const env = {
     hourlySaveLimit: intEnv(e.AR_CAPTURE_HOURLY_LIMIT, 30, { min: 1, max: 1000 }),
     signedUrlTtlSeconds: intEnv(e.AR_SIGNED_URL_TTL_SECONDS, 1800, { min: 60, max: 86400 }),
   },
+  // Phase 5: AI customization. Provider SELECTION lives here; each adapter reads its own credentials/model variables
+  // (GEMINI_*, CLOUDFLARE_*, ...) through its `configFromEnv()`, so adding a provider never edits this file.
+  // The try-on provider is still selected by TRYON_PROVIDER (Phase 3) above.
+  ai: {
+    chatProvider: (e.CHAT_AI_PROVIDER || 'gemini').trim().toLowerCase(),
+    imageProvider: (e.IMAGE_EDIT_PROVIDER || 'photoroom').trim().toLowerCase(),
+    // Private storage (never served statically): the immutable original and every generated version.
+    dir: path.join(privateRoot, 'ai'),
+    maxUploadBytes: intEnv(e.MAX_AI_UPLOAD_MB, 8, { min: 1, max: 10 }) * 1024 * 1024,
+    uploadTypes: (e.AI_UPLOAD_ALLOWED_TYPES || 'image/jpeg,image/png,image/webp').split(',').map((t) => t.trim().toLowerCase())
+      .filter((t) => ['image/jpeg', 'image/png', 'image/webp'].includes(t)),
+    minSide: intEnv(e.AI_UPLOAD_MIN_SIDE, 256, { min: 64, max: 4000 }),
+    // Cost control. 0 = unlimited only for the daily values.
+    editUserHourlyLimit: intEnv(e.AI_EDIT_USER_HOURLY_LIMIT, 10, { min: 1, max: 1000 }),
+    editUserDailyLimit: intEnv(e.AI_EDIT_USER_DAILY_LIMIT, 20, { max: 100000 }),
+    editStoreDailyCap: intEnv(e.AI_EDIT_STORE_DAILY_CAP, 150, { max: 10000000 }),
+    chatUserHourlyLimit: intEnv(e.AI_CHAT_USER_HOURLY_LIMIT, 60, { min: 1, max: 10000 }),
+    maxSessionsPerUser: intEnv(e.AI_MAX_SESSIONS_PER_USER, 20, { min: 1, max: 500 }),
+    maxVersionsPerSession: intEnv(e.AI_MAX_VERSIONS_PER_SESSION, 30, { min: 2, max: 200 }),
+    maxSavedPerUser: intEnv(e.AI_MAX_SAVED_PER_USER, 30, { min: 1, max: 500 }),
+    maxMessageChars: intEnv(e.AI_MAX_MESSAGE_CHARS, 600, { min: 50, max: 2000 }),
+    historyTurns: intEnv(e.AI_CHAT_HISTORY_TURNS, 12, { min: 2, max: 40 }),
+    // A generation still unfinished after this many seconds is marked failed (the provider call itself has its own timeout).
+    editTimeoutMs: intEnv(e.AI_EDIT_TIMEOUT_SECONDS, 240, { min: 30, max: 1800 }) * 1000,
+    unsavedRetentionDays: intEnv(e.AI_UNSAVED_RETENTION_DAYS, 7, { min: 1, max: 365 }),
+    savedRetentionDays: intEnv(e.AI_SAVED_RETENTION_DAYS, 90, { min: 1, max: 3650 }),
+    signedUrlTtlSeconds: intEnv(e.AI_SIGNED_URL_TTL_SECONDS, 1800, { min: 60, max: 86400 }),
+  },
 };
 
 /**

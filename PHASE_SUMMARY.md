@@ -184,3 +184,31 @@ Camera only after an explicit button press; tracks stopped on exit/pagehide/erro
 
 ## Next phase (Phase 5) requirements
 Apply and test Phase 4 on a real phone and a laptop (HTTPS for phone), confirm, then upload the full combined project ZIP (no `node_modules`, `dist`, `.env`, uploads contents, `apps/web/public/mediapipe`).
+
+
+---
+
+# Phase 5 Summary: AI Chat Customization
+
+## Implemented (code written)
+Everything in CHANGELOG 0.5.0. Chat proposes; the server validates and decides (sizes, prices, stock and 3D options come only from the database; unseen views are refused; the image prompt is built by the app).
+
+## Verification status
+**Executed in the build environment**
+- API unit tests: 70 baseline + 18 provider/instruction + 13 customization service tests (fake in-memory repo) pass; 8 MySQL integration tests were skipped (no MySQL).
+- Migration 007 parsed with a SQL parser (syntax only).
+- `npm run build` (Vite) succeeds.
+
+**Not executed**
+- Live Gemini, Cloudflare and Genlook calls (adapters written from documentation found by search; some doc pages were unreachable, so the Gemini model name is left for you to choose; the Cloudflare async/status behaviour is treated as a failure because no status endpoint is documented).
+- Migration 007 against a real MySQL; the integration tests.
+- Any browser run: chat flow, upload, polling, signed-image refresh, responsive 320-1920px layout, keyboard use. No web tests were added for the new pages.
+
+## Known limitations
+- Image edits are AI results: they can ignore or distort the request and may alter unrelated areas.
+- The "3D preview" inside the chat session is not implemented; 3D customization continues in the Phase 2 studio (link in the try-on panel). Chat-proposed 3D options are stored per version.
+- Free quotas are not unlimited; Cloudflare's FLUX.1 Kontext Pro is paid per image.
+- Account deletion must also remove `uploads/private/ai`.
+
+## Next phase requirements
+Run migration 007, set the new env variables, test with real keys on a phone and a laptop, then upload the combined project ZIP and request Phase 6.

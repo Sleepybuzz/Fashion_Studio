@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Camera, Info, Loader2, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import Button from '../../components/ui/Button.jsx';
+import PrivateImage from './PrivateImage.jsx';
 import ProductImage from '../../components/ImagePlaceholder.jsx';
 import { ErrorMessage, Notice, Spinner } from '../../components/ui/Feedback.jsx';
 import { tryOnService } from '../../services/tryon.service.js';
@@ -17,8 +18,8 @@ const GUIDE = [
 ];
 
 /** /try-on/:slug — consent, photo, submit. Processing and the result live on the session page. */
-export default function VirtualTryOnPage() {
-  const { slug } = useParams();
+export default function VirtualTryOnPage({ custom = false }) {
+  const { slug, versionId } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const inputRef = useRef(null);
@@ -31,7 +32,7 @@ export default function VirtualTryOnPage() {
   const canCapture = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
 
   const cfg = useQuery({ queryKey: ['tryon-config'], queryFn: tryOnService.config });
-  const elig = useQuery({ queryKey: ['tryon-eligibility', slug], queryFn: () => tryOnService.eligibility(slug) });
+  const elig = useQuery({ queryKey: ['tryon-eligibility', custom ? `custom:${versionId}` : slug], queryFn: () => (custom ? tryOnService.customEligibility(versionId) : tryOnService.eligibility(slug)) });
 
   // Free the preview object URL when it is replaced or the page closes.
   useEffect(() => () => { if (photo?.previewUrl) URL.revokeObjectURL(photo.previewUrl); }, [photo]);
@@ -40,7 +41,8 @@ export default function VirtualTryOnPage() {
     mutationFn: () => {
       const form = new FormData();
       form.append('photo', photo.file);
-      form.append('productId', String(elig.data.product.id));
+      if (custom) form.append('customizationVersionId', versionId);
+      else form.append('productId', String(elig.data.product.id));
       form.append('consent', 'true');
       form.append('consentVersion', cfg.data.consent.version);
       return tryOnService.create(form, setProgress);
@@ -77,8 +79,8 @@ export default function VirtualTryOnPage() {
   const c = cfg.data;
   const e = elig.data;
   const back = (
-    <Link to={e.product ? `/shop/${e.product.slug}` : '/shop'} className="mb-6 inline-flex items-center gap-1 text-sm text-muted hover:text-ink">
-      <ArrowLeft className="h-4 w-4" aria-hidden="true" />Back to product
+    <Link to={custom ? '/account/ai-designs' : e.product ? `/shop/${e.product.slug}` : '/shop'} className="mb-6 inline-flex items-center gap-1 text-sm text-muted hover:text-ink">
+      <ArrowLeft className="h-4 w-4" aria-hidden="true" />{custom ? 'Back to my AI designs' : 'Back to product'}
     </Link>
   );
 
@@ -99,11 +101,13 @@ export default function VirtualTryOnPage() {
     <div className="container-page py-8 sm:py-12">
       {back}
       <h1 className="h-section">Virtual try-on</h1>
-      <p className="mt-2 max-w-2xl text-sm text-muted">See how <strong className="font-medium text-ink">{e.product.name}</strong> could look on you. An AI model creates an image from your photo and the garment photos.</p>
+      <p className="mt-2 max-w-2xl text-sm text-muted">See how {custom ? 'your customized design' : null}{custom ? null : <strong className="font-medium text-ink">{e.product.name}</strong>} could look on you. An AI model creates an image from your photo and the garment photos.</p>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
         <aside className="mx-auto w-full max-w-sm lg:max-w-none">
-          <ProductImage src={e.product.primaryImage} alt={e.product.name} ratio="aspect-[4/5]" className="rounded-2xl" />
+          {custom
+            ? <PrivateImage src={e.product.primaryImage} alt={e.product.name} className="mx-auto max-h-[60vh] w-auto max-w-full rounded-2xl bg-sand object-contain" />
+            : <ProductImage src={e.product.primaryImage} alt={e.product.name} ratio="aspect-[4/5]" className="rounded-2xl" />}
           <p className="mt-3 text-center text-sm font-medium">{e.product.name}</p>
         </aside>
 

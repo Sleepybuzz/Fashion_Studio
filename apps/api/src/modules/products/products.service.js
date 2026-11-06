@@ -105,6 +105,8 @@ async function hydrate(row) {
     tryOnEligible: row.status === 'active' && Number(tryon) > 0,
     // Phase 4: eligible = active + AR enabled + the asset its mode needs exists (3D model or transparent overlay).
     arEligible: await arService.isEligible(row.id),
+    // Phase 5: the AI customization chat needs an active product with at least one image to edit.
+    aiCustomizeEligible: row.status === 'active' && images.length > 0,
     images: images.map((i) => ({ id: i.id, url: i.url, altText: i.alt_text })),
     variants: variants.map(mapVariant),
   };

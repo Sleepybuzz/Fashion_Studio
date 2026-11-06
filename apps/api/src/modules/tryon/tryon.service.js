@@ -73,7 +73,7 @@ const errorOf = (err) => (err instanceof ProviderError ? err : new ProviderError
  * @param {object} deps
  */
 export function createTryOnService({
-  repo, catalog, provider, storage, config, downloadImage,
+  repo, catalog, provider, storage, config, downloadImage, customizations = null,
   schedule = (fn) => setImmediate(fn), logger = console, now = Date.now,
 }) {
   const inflight = new Map();
@@ -96,6 +96,8 @@ export function createTryOnService({
       id: row.public_id,
       status: row.status,
       product: { id: row.product_id, name: row.product_name, slug: row.product_slug },
+      // Phase 5: true when the garment was a customer's customized design instead of a store product.
+      isCustomDesign: !!row.customization_version_id,
       provider: row.provider,
       isTest: !!row.is_test,
       attempts: row.attempts,
@@ -152,6 +154,18 @@ export function createTryOnService({
     };
   }
 
+  /** Phase 5: eligibility of a customized design (a generated garment image) owned by the customer. */
+  async function getCustomEligibility(user, versionPublicId) {
+    if (!customizations) return { eligible: false, reason: 'not_found', message: 'This design was not found.', product: null };
+    const r = await customizations.evaluateOwned(versionPublicId, user.id);
+    return {
+      eligible: r.eligible,
+      reason: r.reason,
+      message: r.message,
+      product: r.garment ? { id: null, name: r.garment.title, slug: null, primaryImage: customizations.imageUrl(r.garment.publicId, user.id) } : null,
+    };
+  }
+
   // ------------------------------------------------------------------ create / submit
 
   async function enforceLimits(userId) {
@@ -177,7 +191,7 @@ export function createTryOnService({
   /**
    * @param {{user:{id:number}, productId:number, consent:boolean, consentVersion:string, photo:{buffer:Buffer}}} input
    */
-  async function createSession({ user, productId, consent, consentVersion, photo }) {
+  async function createSession({ user, productId, customizationVersionId, consent, consentVersion, photo }) {
     if (consent !== true) throw badRequest('Please agree to the photo processing terms to continue.', { consent: 'Consent is required' });
     assertProviderReady();
     const current = consentInfo();
@@ -185,10 +199,20 @@ export function createTryOnService({
       throw badRequest('The consent terms have changed. Please reload the page and review them again.', { consent: 'Outdated consent version' });
     }
 
-    const data = await catalog.getById(productId);
-    if (!data) throw notFound('Product not found');
-    const elig = evaluateEligibility(data);
-    if (!elig.eligible) throw new AppError(422, ELIGIBILITY_MESSAGES[elig.reason]);
+    let data = null;
+    let custom = null;
+    if (customizationVersionId) {
+      if (!customizations) throw notFound('Design not found');
+      const r = await customizations.evaluateOwned(customizationVersionId, user.id);
+      if (r.reason === 'not_found') throw notFound('Design not found');
+      if (!r.eligible) throw new AppError(422, r.message);
+      custom = r.garment;
+    } else {
+      data = await catalog.getById(productId);
+      if (!data) throw notFound('Product not found');
+      const elig = evaluateEligibility(data);
+      if (!elig.eligible) throw new AppError(422, ELIGIBILITY_MESSAGES[elig.reason]);
+    }
 
     let info;
     try {
@@ -208,9 +232,10 @@ export function createTryOnService({
       inserted = await repo.insertExclusive({
         publicId: crypto.randomUUID(),
         userId: user.id,
-        productId: data.product.id,
-        productName: data.product.name,
-        productSlug: data.product.slug,
+        productId: data ? data.product.id : null,
+        productName: data ? data.product.name : custom.title,
+        productSlug: data ? data.product.slug : null,
+        customizationVersionId: custom ? custom.versionId : null,
         provider: provider.id,
         photoKey: key, photoMime: info.mime, photoSize: info.size, photoWidth: info.width, photoHeight: info.height,
         consentVersion: current.version, consentProvider: provider.id, consentedAt: nowDate,
@@ -233,14 +258,23 @@ export function createTryOnService({
     const row = await repo.getById(id);
     if (!row || row.status !== TRYON_STATUS.VALIDATING) return;
     try {
-      const data = row.product_id ? await catalog.getById(row.product_id) : null;
-      const elig = evaluateEligibility(data);
-      if (!elig.eligible) return await failRow(row, E.INVALID_GARMENT, 'NOT_ELIGIBLE_AT_SUBMIT');
-
-      const spec = buildGarmentSpec(data.product, data.config, data.images);
-      const images = await Promise.all(data.images.map(async (img) => ({
-        buffer: await storage.read('garments', img.storageKey), mimeType: img.mimeType, filename: img.storageKey,
-      })));
+      let spec;
+      let images;
+      if (row.customization_version_id) {
+        // Phase 5: the garment is the customer's own generated image (re-checked for ownership at submit time).
+        const g = customizations ? await customizations.loadForSubmit(row.customization_version_id, row.user_id) : null;
+        if (!g) return await failRow(row, E.INVALID_GARMENT, 'DESIGN_UNAVAILABLE_AT_SUBMIT');
+        spec = customizations.buildSpec(g);
+        images = [{ buffer: g.buffer, mimeType: g.mimeType, filename: g.storageKey }];
+      } else {
+        const data = row.product_id ? await catalog.getById(row.product_id) : null;
+        const elig = evaluateEligibility(data);
+        if (!elig.eligible) return await failRow(row, E.INVALID_GARMENT, 'NOT_ELIGIBLE_AT_SUBMIT');
+        spec = buildGarmentSpec(data.product, data.config, data.images);
+        images = await Promise.all(data.images.map(async (img) => ({
+          buffer: await storage.read('garments', img.storageKey), mimeType: img.mimeType, filename: img.storageKey,
+        })));
+      }
       const photo = { buffer: await storage.read('photos', row.photo_key), mimeType: row.photo_mime, filename: row.photo_key };
 
       const { jobId } = await provider.submitTryOn({
@@ -418,7 +452,7 @@ export function createTryOnService({
   }
 
   return {
-    getPublicConfig, getEligibility, createSession, submit, getSession, listSessions, retrySession,
+    getPublicConfig, getEligibility, getCustomEligibility, createSession, submit, getSession, listSessions, retrySession,
     deleteSession, deleteAll, setSaved, resolveSessionFile, adminOverview, adminCredits, refresh, toView,
   };
 }

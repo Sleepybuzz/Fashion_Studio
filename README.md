@@ -245,7 +245,35 @@ $env:AFS_INTEGRATION="1"; npm test         # also runs the AR integration tests 
 npm run test:web                           # AR math, camera helpers, photo helpers
 ```
 
+## AI Chat Customization (Phase 5)
+
+Customers can describe changes to a product in plain language ("AI Chat & Customize This Product" on the product page), or upload their own garment photo at `/customize/upload` and edit it by chat. Every edit builds on the previous successful version; the original is never changed; a failed edit keeps the last good version. Results are AI-generated design concepts, not sewing patterns, 3D models or a guarantee of fit.
+
+**Three independent providers** (selected in `apps/api/.env`, restart the API after any change):
+
+| Role | Variable | Default | Notes |
+|---|---|---|---|
+| Chat / understanding | `CHAT_AI_PROVIDER` | `gemini` | Needs `GEMINI_API_KEY` and `GEMINI_CHAT_MODEL` (you choose the model from Google's current docs). |
+| Image editing | `IMAGE_EDIT_PROVIDER` | `cloudflare` | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`; model `black-forest-labs/flux-1-kontext-pro` (paid per image, check Cloudflare's pricing page). |
+| Try-on | `TRYON_PROVIDER` | `genlook` | Phase 3 provider, reused unchanged. |
+
+- Unknown provider names stop startup. Missing keys disable only that capability. Nothing silently falls back to another (possibly paid) provider.
+- Provider names and keys never reach the browser; the UI uses labels supplied by the API.
+- Free tiers of Gemini and Cloudflare are quotas, not unlimited use, and may change. Free-tier data handling can differ from paid: read each provider's current terms before launch. The consent text shown to customers is generated from the active providers.
+- Cost controls: per-user hourly/daily edit limits, a store-wide daily cap, one image generation at a time per customer, no automatic retry of paid image calls.
+
+**Add a provider** (e.g. another image editor): copy `apps/api/src/modules/ai/providers/image/cloudflare.adapter.js`, export `ID`, `configFromEnv(env)` and a factory returning `editImage(...)` plus `describe()`; add one line to the `ADAPTERS` map in `image-provider.factory.js`; add its env vars to `.env.example`. No database, route or React change is needed.
+
+**Try-on eligibility:** a store product with a 3D asset: 3D Studio + AR + AI Photo. A product without 3D, an uploaded garment or a generated design: AI Photo only (a photograph is not a 3D model).
+
+**Privacy:** images are stored privately under `UPLOAD_DIR/private/ai` and served by short-lived signed URLs. Consent is required before anything is sent to a provider. Unsaved sessions are deleted after 7 days, saved after 90 (configurable). Customers can delete sessions anytime.
+
+**New API (`/api/ai`, customer role unless noted):** `GET /status` (public), `GET /config`, `GET|POST|DELETE /sessions`, `GET|DELETE /sessions/:id`, `GET|POST /sessions/:id/messages`, `GET /sessions/:id/versions[/:versionId]`, `POST /sessions/:id/versions/:versionId/restore`, `POST /sessions/:id/restore-original`, `DELETE /sessions/:id/versions/:versionId`, `POST /sessions/:id/saved`, `GET /sessions/:id/tryon-methods`, `GET /saved`, `DELETE /saved/:id`, signed `GET /assets/:which/:id`. Try-on adds `GET /api/tryon/eligibility/custom/:versionId`. Admin: `GET /api/admin/ai/overview` (aggregate counts only).
+
+Migration: `007_create_ai_customization.sql` (run `npm run migrate`).
+
 ## Known limitations
+- Phase 5: see PHASE_SUMMARY.md. Live Gemini, Cloudflare and Genlook calls, migration 007 on MySQL, and browser/responsive checks were not run in the build environment.
 - Phase 4: see PHASE_SUMMARY.md. Live camera tracking, MediaPipe inference and WebGL rendering were not run in the build environment (no browser or camera); test on real devices.
 
 - Phase 3: see PHASE_SUMMARY.md (provider integration written to the official docs but not run against the live API in the build environment).

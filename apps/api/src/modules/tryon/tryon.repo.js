@@ -42,11 +42,11 @@ export function createTryOnRepo({ pool, withTransaction }) {
       if (active.length) return { conflict: true };
       const [res] = await conn.query(
         `INSERT INTO tryon_sessions
-           (public_id, user_id, product_id, product_name, product_slug, status, provider, attempts,
+           (public_id, user_id, product_id, customization_version_id, product_name, product_slug, status, provider, attempts,
             photo_key, photo_mime, photo_size, photo_width, photo_height,
             consent_version, consent_provider, consented_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 'validating', ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [r.publicId, r.userId, r.productId, r.productName, r.productSlug, r.provider,
+         VALUES (?, ?, ?, ?, ?, ?, 'validating', ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [r.publicId, r.userId, r.productId, r.customizationVersionId ?? null, r.productName, r.productSlug, r.provider,
           r.photoKey, r.photoMime, r.photoSize, r.photoWidth, r.photoHeight,
           r.consentVersion, r.consentProvider, r.consentedAt, r.now, r.now],
       );

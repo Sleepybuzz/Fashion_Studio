@@ -22,6 +22,8 @@ function createUnavailableProvider(id, issue) {
     describe: () => ({ id, label: id, operator: id, privacyUrl: '', retentionDays: 0, testMode: false, disclosure: [] }),
     submitTryOn: fail,
     getStatus: fail,
+    generateTryOn: fail,
+    getTryOnStatus: fail,
     deleteUserData: fail,
   };
 }

@@ -4,11 +4,13 @@ import { AI_DESCRIPTION_MAX } from './tryon.constants.js';
 export const uuidParamSchema = z.object({ id: z.string().uuid('Invalid id') });
 
 export const createSessionSchema = z.object({
-  productId: z.coerce.number({ invalid_type_error: 'Choose a product' }).int().positive('Choose a product'),
+  // Exactly one garment source: a store product, or (Phase 5) a customized design version.
+  productId: z.coerce.number({ invalid_type_error: 'Choose a product' }).int().positive('Choose a product').optional(),
+  customizationVersionId: z.string().uuid('Invalid design').optional(),
   // multipart fields arrive as strings
   consent: z.enum(['true'], { errorMap: () => ({ message: 'Consent is required' }) }).transform(() => true),
   consentVersion: z.string().trim().min(1, 'Consent version is required').max(30),
-});
+}).refine((b) => (b.productId ? 1 : 0) + (b.customizationVersionId ? 1 : 0) === 1, { message: 'Choose a product or a design', path: ['productId'] });
 
 export const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -39,3 +41,5 @@ export const configBodySchema = z.object({
   enabled: z.boolean(),
   aiDescription: z.string().trim().max(AI_DESCRIPTION_MAX, `Keep it under ${AI_DESCRIPTION_MAX} characters`).optional().nullable(),
 });
+
+export const customVersionParamSchema = z.object({ versionId: z.string().uuid('Invalid design') });

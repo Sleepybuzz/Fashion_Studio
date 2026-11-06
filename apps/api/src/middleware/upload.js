@@ -103,3 +103,17 @@ export const tryOnGarmentUpload = memoryImageUpload('image', env.tryon.maxGarmen
 export const arCaptureUpload = memoryImageUpload('image', env.ar.maxCaptureBytes);
 /** Admin transparent garment overlay (multipart field `overlay`). */
 export const arOverlayUpload = memoryImageUpload('overlay', env.ar.maxOverlayBytes);
+
+// ---------------------------------------------------------------------------
+// Phase 5: AI customization garment upload (multipart field `image`). Allowed types and the size limit come from
+// AI_UPLOAD_ALLOWED_TYPES / MAX_AI_UPLOAD_MB; the real content is verified again by the service (signature, dimensions).
+// ---------------------------------------------------------------------------
+
+/** In-memory single garment image for AI customization. Optional: a product session sends no file. */
+export const aiImageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: env.ai.maxUploadBytes, files: 1, fields: 12, fieldSize: 2048 },
+  fileFilter: (_req, file, cb) => (env.ai.uploadTypes.includes(String(file.mimetype).toLowerCase())
+    ? cb(null, true)
+    : cb(badRequest('This image format is not accepted. Use JPEG, PNG or WebP.'))),
+}).single('image');

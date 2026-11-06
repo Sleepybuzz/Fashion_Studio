@@ -13,6 +13,7 @@ import { publicRouter as productsPublic, adminRouter as productsAdmin } from './
 import { publicRouter as garmentsPublic, customerRouter as customizationsRouter, adminRouter as garmentsAdmin } from './modules/garments/garments.routes.js';
 import { customerRouter as tryOnCustomer, adminRouter as tryOnAdmin } from './modules/tryon/tryon.routes.js';
 import { customerRouter as arCustomer, adminRouter as arAdmin } from './modules/ar/ar.routes.js';
+import { customerRouter as aiCustomer, adminRouter as aiAdmin } from './modules/ai/ai.routes.js';
 import { publicRouter as categoriesPublic, adminRouter as categoriesAdmin } from './modules/categories/categories.routes.js';
 
 export function createApp() {
@@ -51,8 +52,10 @@ export function createApp() {
   app.use('/api/customizations', customizationsRouter);
   app.use('/api/tryon', tryOnCustomer);
   app.use('/api/ar', arCustomer);
+  app.use('/api/ai', aiCustomer);
   app.use('/api/admin/tryon', tryOnAdmin);
   app.use('/api/admin/ar', arAdmin);
+  app.use('/api/admin/ai', aiAdmin);
   app.use('/api/admin/garments', garmentsAdmin);
   app.use('/api/admin/products', productsAdmin);
   app.use('/api/admin/categories', categoriesAdmin);

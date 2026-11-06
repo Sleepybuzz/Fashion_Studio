@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.5.0] - Phase 5: AI Chat Customization
+
+### Added
+- "AI Chat & Customize This Product" (product page, `/customize/product/:slug`) and upload-and-customize (`/customize/upload`); chat session page with preview, compare with original, version history, restore, delete, save, and a try-on methods panel; `/account/ai-designs`.
+- Provider architecture: `CHAT_AI_PROVIDER` (Gemini), `IMAGE_EDIT_PROVIDER` (Cloudflare FLUX.1 Kontext Pro), `TRYON_PROVIDER` (Genlook, reused). Contracts, factories, registry, normalized errors, no fallback.
+- Backend module `ai`: structured-instruction validation against real product options, unseen-view refusal, idempotent messages, one image generation at a time, limits, private signed images, retention purge, admin aggregate overview.
+- Unified try-on eligibility; AI Photo Try-On accepts a generated design (`customizationVersionId`).
+- Migration `007_create_ai_customization.sql`.
+- Tests: provider, instruction and service unit tests.
+
+### Changed
+- Genlook adapter exposes `generateTryOn`/`getTryOnStatus` aliases; `tryon.*` files, `products.service.js` (`aiCustomizeEligible`), `config/env.js`, `app.js`, `server.js`, `middleware/upload.js`, `.env.example`, README, versions 0.5.0.
+
+### Dependencies
+None added.
+
+### Breaking changes
+None.
+
 ## [0.4.0] - Phase 4: Real-Time AR Try-On
 
 ### Added
