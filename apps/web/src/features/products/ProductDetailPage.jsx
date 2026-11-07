@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Box, Camera, MessageSquareText, Minus, Plus, ShoppingBag, Sparkles } from 'lucide-react';
+import { Box, Camera, MessageSquareText, ShoppingBag, Sparkles } from 'lucide-react';
 import ProductImage from '../../components/ImagePlaceholder.jsx';
 import WishlistButton from '../../components/WishlistButton.jsx';
 import { ErrorMessage, Spinner } from '../../components/ui/Feedback.jsx';
@@ -20,7 +20,6 @@ export default function ProductDetailPage() {
   const [active, setActive] = useState(0);
   const [size, setSize] = useState('');
   const [color, setColor] = useState('');
-  const [qty, setQty] = useState(1);
 
   const aiStatus = useQuery({ queryKey: ['ai-status'], queryFn: aiService.status, staleTime: 60000, retry: false });
 
@@ -106,22 +105,13 @@ export default function ProductDetailPage() {
             </fieldset>
           )}
 
-          <div className="mt-6 flex items-center gap-3">
-            <span className="text-sm font-medium">Quantity</span>
-            <div className="flex items-center rounded-full border border-line bg-white">
-              <button onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Decrease quantity" className="flex h-11 w-11 items-center justify-center"><Minus className="h-4 w-4" /></button>
-              <span className="w-8 text-center text-sm" aria-live="polite">{qty}</span>
-              <button onClick={() => setQty((q) => Math.min(10, q + 1))} aria-label="Increase quantity" className="flex h-11 w-11 items-center justify-center"><Plus className="h-4 w-4" /></button>
-            </div>
-          </div>
-
           <p className={`mt-4 text-sm ${inStock ? 'text-leaf' : 'text-red-600'}`}>{inStock ? 'In stock' : 'Currently out of stock'}</p>
 
           <div className="mt-6 space-y-3">
             <button disabled aria-disabled="true" className="flex h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-full bg-ink text-white opacity-40">
-              <ShoppingBag className="h-4 w-4" aria-hidden="true" />Add to cart
+              <ShoppingBag className="h-4 w-4" aria-hidden="true" />Purchasing unavailable in this demo
             </button>
-            <p className="text-center text-xs text-muted">Cart and checkout are coming in a later release. Ordering is not available yet.</p>
+            <p className="text-center text-xs text-muted">This is a technology demo: there is no cart, checkout or ordering. Try the 3D, AI and try-on options below.</p>
             {product.has3dModel ? (
               <Link to={`/studio/${product.slug}`} className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-brand bg-white font-medium text-brand hover:bg-brand hover:text-white">
                 <Box className="h-4 w-4" aria-hidden="true" />Customize in 3D

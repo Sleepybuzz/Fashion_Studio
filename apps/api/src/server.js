@@ -24,6 +24,28 @@ startArMaintenance();
 startAiMaintenance();
 
 const app = createApp();
-app.listen(env.port, () => {
+const server = app.listen(env.port, () => {
   console.log(`[api] listening on http://localhost:${env.port} (${env.nodeEnv})`);
+});
+// Long enough for AI generations (the services enforce their own, shorter, timeouts).
+server.requestTimeout = env.requestTimeoutMs;
+server.keepAliveTimeout = 65_000;
+
+// Graceful shutdown for process managers (pm2, systemd, Docker): stop accepting requests, then close the DB pool.
+let shuttingDown = false;
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[api] ${signal} received, shutting down`);
+  const force = setTimeout(() => process.exit(1), 10_000);
+  force.unref();
+  server.close(async () => {
+    try { await (await import('./config/db.js')).pool.end(); } catch { /* ignore */ }
+    process.exit(0);
+  });
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('unhandledRejection', (reason) => {
+  console.error('[api] unhandledRejection:', reason instanceof Error ? reason.message : String(reason));
 });

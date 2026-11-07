@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { env } from './config/env.js';
 import { pool } from './config/db.js';
 import { errorHandler, notFoundHandler } from './middleware/error.js';
@@ -19,19 +20,37 @@ import { publicRouter as categoriesPublic, adminRouter as categoriesAdmin } from
 export function createApp() {
   const app = express();
   app.disable('x-powered-by');
+  // Behind nginx/Cloudflare/a PaaS router, req.ip must come from X-Forwarded-For or every user shares one rate-limit bucket.
+  if (env.trustProxy > 0) app.set('trust proxy', env.trustProxy);
   app.use(
     helmet({
       // Product images are loaded by the web app from a different origin (port).
       crossOriginResourcePolicy: { policy: 'cross-origin' },
     }),
   );
-  app.use(cors({ origin: env.frontendUrl, credentials: false }));
+  app.use(cors({
+    origin(origin, cb) { cb(null, !origin || env.frontendOrigins.includes(origin)); },
+    credentials: false,
+  }));
   app.use(express.json({ limit: '100kb' }));
 
   // Product images only. Private assets (3D models, try-on photos/results) live under uploads/private and are NOT served here.
   app.use('/uploads/products', express.static(`${env.uploadDir}/products`, {
     index: false, dotfiles: 'deny', maxAge: '7d', setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff'),
   }));
+
+  // API responses can contain personal data; never let browsers or shared caches store them.
+  app.use('/api', (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
+  if (env.globalRateLimitPerMinute > 0) {
+    app.use('/api', rateLimit({
+      windowMs: 60 * 1000,
+      limit: env.globalRateLimitPerMinute,
+      standardHeaders: true,
+      legacyHeaders: false,
+      skip: (req) => req.path === '/health',
+      message: { error: { message: 'Too many requests. Please slow down.' } },
+    }));
+  }
 
   app.get('/api/health', async (_req, res) => {
     try {

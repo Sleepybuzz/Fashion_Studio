@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validateConfig } from './validate.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const API_ROOT = path.resolve(__dirname, '../..');
@@ -24,6 +25,14 @@ export const env = {
   isProd: e.NODE_ENV === 'production',
   port: Number(e.PORT) || 5000,
   frontendUrl: e.FRONTEND_URL || 'http://localhost:5173',
+  // Phase 7: FRONTEND_URL may list several comma-separated origins (e.g. apex + www).
+  frontendOrigins: (e.FRONTEND_URL || 'http://localhost:5173').split(',').map((o) => o.trim().replace(/\/+$/, '')).filter(Boolean),
+  // Phase 7: number of reverse proxies in front of the API (0 = none). Needed so rate limits see real client IPs.
+  trustProxy: intEnv(e.TRUST_PROXY, 0, { max: 5 }),
+  // Phase 7: coarse per-IP limit over all /api routes (requests per minute). 0 = disabled.
+  globalRateLimitPerMinute: intEnv(e.API_RATE_LIMIT_PER_MINUTE, 300, { max: 100000 }),
+  dbPoolSize: intEnv(e.DB_POOL_SIZE, 10, { min: 1, max: 100 }),
+  requestTimeoutMs: intEnv(e.REQUEST_TIMEOUT_SECONDS, 300, { min: 10, max: 1800 }) * 1000,
   db: {
     host: e.DB_HOST || 'localhost',
     port: Number(e.DB_PORT) || 3306,
@@ -123,4 +132,6 @@ export function assertServerConfig() {
   if (env.jwtSecret.length < 32) {
     throw new Error('JWT_SECRET must be at least 32 characters long.');
   }
+  const problems = validateConfig(env);
+  if (problems.length) throw new Error(`Invalid configuration:\n - ${problems.join('\n - ')}`);
 }

@@ -6,6 +6,9 @@ export const notFoundHandler = (req, res) => {
 
 // eslint-disable-next-line no-unused-vars
 export const errorHandler = (err, _req, res, _next) => {
+  // body-parser errors (malformed JSON, oversized body) are client errors, not 500s.
+  if (err.type === 'entity.parse.failed') return res.status(400).json({ error: { message: 'Request body is not valid JSON' } });
+  if (err.type === 'entity.too.large') return res.status(413).json({ error: { message: 'Request body is too large' } });
   if (err.name === 'MulterError') {
     const message = err.code === 'LIMIT_FILE_SIZE' ? 'File is too large' : 'Upload failed';
     return res.status(400).json({ error: { message } });

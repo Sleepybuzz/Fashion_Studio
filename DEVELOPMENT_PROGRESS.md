@@ -42,3 +42,7 @@ Apply and test Phase 4 on a phone (HTTPS) and a laptop, confirm, then upload the
 - Built on the Phase 1-4 project. Migration 007 added. Providers: Gemini (chat), Cloudflare FLUX.1 Kontext Pro (image), Genlook (try-on), each switchable by env.
 - Verified here: unit tests, Vite build, SQL syntax parse. Not verified: live providers, MySQL migration, browser behaviour. See PHASE_SUMMARY.md.
 - Next: owner tests Phase 5, then Phase 6.
+
+
+## Phase 7 (partial)
+Completed: static audit, backend hardening, deployment examples, docs. Pending (needs owner machine): `npm ci`, `npm test`, `npm run build:web`, migrations on MySQL, browser/responsive/AR checks, live provider checks, `npm audit`.

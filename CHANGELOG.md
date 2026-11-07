@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0 - Phase 7 (partial: static audit and hardening)
+- Fixed: malformed/oversized JSON returned 500; now 400/413.
+- Added: global API rate limit, no-store API caching, TRUST_PROXY, multi-origin CORS, production config validation, graceful shutdown, DB pool options.
+- Changed: product page no longer shows a quantity picker; disabled purchase button explains that this is a demo.
+- Added: Vite chunk splitting, SPA `_redirects`, nginx/pm2 examples, docs (SECURITY, DEPLOYMENT, TESTING, AI_PROVIDERS, DEMO_GUIDE), config unit test.
+- Not done: live testing, build, provider verification (no network/MySQL/browser in this environment).
+
+
 ## [0.5.0] - Phase 5: AI Chat Customization
 
 ### Added

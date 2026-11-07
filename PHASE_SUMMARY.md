@@ -212,3 +212,7 @@ Everything in CHANGELOG 0.5.0. Chat proposes; the server validates and decides (
 
 ## Next phase requirements
 Run migration 007, set the new env variables, test with real keys on a phone and a laptop, then upload the combined project ZIP and request Phase 6.
+
+
+## Phase 7 (partial)
+Static audit + hardening only; see CHANGELOG 0.7.0 and docs/TESTING.md. Not executed: build, API integration tests, browsers, providers. Cart/checkout intentionally not implemented. Open question: image provider defaults to PhotoRoom in code.
