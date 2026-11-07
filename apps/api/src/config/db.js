@@ -15,6 +15,7 @@ export const pool = mysql.createPool({
   idleTimeout: 60000,
   decimalNumbers: true,
   charset: 'utf8mb4',
+  ...(env.db.ssl ? { ssl: { minVersion: 'TLSv1.2', rejectUnauthorized: true } } : {}),
 });
 
 /** Run a function inside a transaction. */

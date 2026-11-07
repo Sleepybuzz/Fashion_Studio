@@ -11,7 +11,8 @@ if (!env.db.user) {
   process.exit(1);
 }
 
-const base = { host: env.db.host, port: env.db.port, user: env.db.user, password: env.db.password, multipleStatements: true };
+const base = { host: env.db.host, port: env.db.port, user: env.db.user, password: env.db.password, multipleStatements: true,
+  ...(env.db.ssl ? { ssl: { minVersion: 'TLSv1.2', rejectUnauthorized: true } } : {}) };
 const dbName = env.db.database;
 if (!/^[A-Za-z0-9_]+$/.test(dbName)) {
   console.error('[migrate] DB_NAME may only contain letters, numbers and underscores');

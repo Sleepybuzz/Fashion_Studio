@@ -28,7 +28,6 @@ CREATE TABLE IF NOT EXISTS products (
   KEY idx_products_category (category_id),
   KEY idx_products_status_created (status, created_at),
   KEY idx_products_featured (is_featured),
-  FULLTEXT KEY ft_products_search (name, description),
   CONSTRAINT fk_products_category FOREIGN KEY (category_id) REFERENCES product_categories (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

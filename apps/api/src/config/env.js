@@ -39,6 +39,8 @@ export const env = {
     user: e.DB_USER || '',
     password: e.DB_PASSWORD || '',
     database: e.DB_NAME || 'ai_fashion_studio',
+    // Cloud MySQL (TiDB Cloud, Aiven...) requires TLS. Set DB_SSL=true there.
+    ssl: String(e.DB_SSL || '').toLowerCase() === 'true',
   },
   jwtSecret: e.JWT_SECRET || '',
   jwtExpiresIn: e.JWT_EXPIRES_IN || '7d',
