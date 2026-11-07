@@ -126,8 +126,12 @@ CREATE TABLE IF NOT EXISTS ai_saved_customizations (
 -- product_id stays NULL for those sessions (product_name holds the design title). Deleting the version keeps the
 -- customer's try-on result (the column becomes NULL).
 ALTER TABLE tryon_sessions
-  ADD COLUMN customization_version_id BIGINT UNSIGNED NULL AFTER product_id,
-  ADD KEY idx_tryon_custom_version (customization_version_id),
+  ADD COLUMN customization_version_id BIGINT UNSIGNED NULL AFTER product_id;
+
+ALTER TABLE tryon_sessions
+  ADD KEY idx_tryon_custom_version (customization_version_id);
+
+ALTER TABLE tryon_sessions
   ADD CONSTRAINT fk_tryon_sessions_custom_version FOREIGN KEY (customization_version_id) REFERENCES ai_customization_versions (id) ON DELETE SET NULL;
 
 -- Rollback (manual, destructive: only run if you really want to remove the feature's data):
