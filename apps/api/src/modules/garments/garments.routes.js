@@ -4,6 +4,7 @@ import { garmentModelUpload } from '../../middleware/upload.js';
 import { validate } from '../../middleware/validate.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { notFound } from '../../utils/AppError.js';
+import { garmentStore } from '../../storage/index.js';
 import * as svc from './garments.service.js';
 import {
   createDesignSchema, idParamSchema, modelMetaSchema, optionsBodySchema,
@@ -11,12 +12,12 @@ import {
 } from './garments.schemas.js';
 
 /** Streams a model file from private storage with safe headers. `file` is a validated storage key. */
-function sendModel(res, next, { root, file, mime, sha256 }, cache) {
+function sendModel(res, next, { file, mime, sha256 }, cache) {
   res.setHeader('Content-Type', mime);
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Cache-Control', cache);
   res.setHeader('ETag', `"${sha256}"`);
-  res.sendFile(file, { root, dotfiles: 'deny' }, (err) => {
+  garmentStore.send(res, file, (err) => {
     if (err && !res.headersSent) next(err.code === 'ENOENT' ? notFound('Model file is missing from storage') : err);
   });
 }

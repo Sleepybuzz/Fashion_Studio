@@ -25,5 +25,14 @@ export function validateConfig(cfg) {
     }
   }
   if (!cfg.frontendOrigins.length) problems.push('FRONTEND_URL is empty.');
+  if (cfg.storageDriver && !['local', 'bunny'].includes(cfg.storageDriver)) {
+    problems.push('STORAGE_DRIVER must be "local" or "bunny".');
+  }
+  if (cfg.storageDriver === 'bunny') {
+    const b = cfg.bunny || {};
+    if (!b.storageZone) problems.push('BUNNY_STORAGE_ZONE is required when STORAGE_DRIVER=bunny.');
+    if (!b.accessKey) problems.push('BUNNY_STORAGE_ACCESS_KEY is required when STORAGE_DRIVER=bunny.');
+    if (!/^https:\/\//.test(b.cdnUrl || '')) problems.push('BUNNY_CDN_URL (your Pull Zone URL) must start with https:// when STORAGE_DRIVER=bunny.');
+  }
   return problems;
 }

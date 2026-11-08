@@ -41,7 +41,7 @@ customerRouter.get('/assets/:which/:id', validate(assetParamsSchema, 'params'), 
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Cache-Control', 'private, max-age=300');
   res.setHeader('Content-Disposition', dl ? `attachment; filename="ai-fashion-studio-${which}.${EXT_FOR_MIME[file.mime] || 'jpg'}"` : 'inline');
-  res.sendFile(file.key, { root: storage.dirFor(file.kind), dotfiles: 'deny' }, (err) => {
+  storage.send(res, file.kind, file.key, (err) => {
     if (err && !res.headersSent) next(err.code === 'ENOENT' ? notFound('Image not found') : err);
   });
 }));

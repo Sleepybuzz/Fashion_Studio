@@ -1,9 +1,9 @@
 import crypto from 'node:crypto';
-import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pool, withTransaction } from '../../config/db.js';
 import { env } from '../../config/env.js';
-import { GARMENT_DIR, modelFormatFromName } from '../../middleware/upload.js';
+import { modelFormatFromName } from '../../middleware/upload.js';
+import { garmentStore } from '../../storage/index.js';
 import { badRequest, notFound } from '../../utils/AppError.js';
 import { inspectModelFile } from './glb.js';
 import { findConfigProblems, normalizeConfig } from './garments.config.js';
@@ -13,8 +13,7 @@ export const MAX_DESIGNS_PER_USER = 50;
 const MIME = { glb: 'model/gltf-binary', gltf: 'model/gltf+json' };
 const STORAGE_KEY_RE = /^[0-9a-f-]{36}\.(glb|gltf)$/;
 
-const unlinkQuiet = (file) => fs.unlink(file).catch(() => {});
-const filePathFor = (storageKey) => path.join(GARMENT_DIR, storageKey);
+const removeQuiet = (storageKey) => garmentStore.remove(storageKey).catch(() => {});
 
 /** Relative API path the viewer loads the model from. `v` busts caches after a replacement. */
 const assetUrl = (a) => `/api/garments/assets/${a.id}/file?v=${a.sha256.slice(0, 12)}`;
@@ -33,11 +32,11 @@ const mapAsset = (a) => ({
 });
 
 /** Run `fn` and delete the freshly uploaded temp file if it throws. */
-async function cleanupOnError(file, fn) {
+async function cleanupOnError(storageKey, fn) {
   try {
     return await fn();
   } catch (err) {
-    await unlinkQuiet(file.path);
+    await removeQuiet(storageKey);
     throw err;
   }
 }
@@ -119,17 +118,19 @@ export async function adminGet(productId) {
 }
 
 /**
- * Add or replace the 3D model of a product. The upload has already been written to private storage by multer.
+ * Add or replace the 3D model of a product. multer holds the upload in memory; it is written to storage (disk or Bunny) after validation.
  * @param {number} productId
  * @param {import('multer').File} file
  */
 export async function saveModel(productId, file) {
   if (!file) throw badRequest('No model file received (field name: model)');
-  return cleanupOnError(file, async () => {
-    await productOrThrow(productId);
-    const format = modelFormatFromName(file.originalname);
-    const info = await inspectModelFile(file.path, format);
-    const sha256 = crypto.createHash('sha256').update(await fs.readFile(file.path)).digest('hex');
+  const format = modelFormatFromName(file.originalname);
+  const storageKey = `${crypto.randomUUID()}.${format}`;
+  await productOrThrow(productId);
+  const info = await inspectModelFile(file.buffer, format);
+  const sha256 = crypto.createHash('sha256').update(file.buffer).digest('hex');
+  await garmentStore.put(storageKey, file.buffer);
+  return cleanupOnError(storageKey, async () => {
     const original = path.basename(file.originalname).replace(/[^\w.\- ()]/g, '_').slice(0, 200);
 
     const { oldKey, warnings } = await withTransaction(async (conn) => {
@@ -141,13 +142,13 @@ export async function saveModel(productId, file) {
         await conn.query(
           `UPDATE garment_assets SET storage_key = ?, original_name = ?, format = ?, mime_type = ?, size_bytes = ?,
              sha256 = ?, model_info = ?, customizable_materials = ? WHERE id = ?`,
-          [file.filename, original, format, MIME[format], file.size, sha256, JSON.stringify(info), JSON.stringify(keepMaterials), existing.id],
+          [storageKey, original, format, MIME[format], file.size, sha256, JSON.stringify(info), JSON.stringify(keepMaterials), existing.id],
         );
       } else {
         await conn.query(
           `INSERT INTO garment_assets (product_id, storage_key, original_name, format, mime_type, size_bytes, sha256, model_info, customizable_materials)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [productId, file.filename, original, format, MIME[format], file.size, sha256, JSON.stringify(info), JSON.stringify([])],
+          [productId, storageKey, original, format, MIME[format], file.size, sha256, JSON.stringify(info), JSON.stringify([])],
         );
       }
       const gone = missingNodes(await getOptions(productId, conn), info.nodeNames);
@@ -156,7 +157,7 @@ export async function saveModel(productId, file) {
         warnings: gone.length ? [`Some style options refer to nodes that are not in the new model: ${gone.join(', ')}. Update the options.`] : [],
       };
     });
-    if (oldKey && oldKey !== file.filename && STORAGE_KEY_RE.test(oldKey)) await unlinkQuiet(filePathFor(oldKey));
+    if (oldKey && oldKey !== storageKey && STORAGE_KEY_RE.test(oldKey)) await removeQuiet(oldKey);
     return { ...(await adminGet(productId)), warnings };
   });
 }
@@ -181,7 +182,7 @@ export async function removeModel(productId) {
     await conn.query('DELETE FROM customization_options WHERE product_id = ?', [productId]);
     await conn.query('DELETE FROM garment_assets WHERE id = ?', [asset.id]);
   });
-  if (STORAGE_KEY_RE.test(asset.storage_key)) await unlinkQuiet(filePathFor(asset.storage_key));
+  if (STORAGE_KEY_RE.test(asset.storage_key)) await removeQuiet(asset.storage_key);
 }
 
 /** Replace all style options of a product (validated against the nodes that exist in its model). */
@@ -211,9 +212,9 @@ export async function setOptions(productId, options) {
 // ---------------------------------------------------------------- file streaming
 
 /**
- * Resolve the on-disk file for an asset the caller may read.
+ * Resolve the stored file for an asset the caller may read.
  * Customers/guests: only models of ACTIVE products. Admin: any status.
- * @returns {Promise<{root:string, file:string, mime:string, sha256:string}>}
+ * @returns {Promise<{file:string, mime:string, sha256:string}>}
  */
 export async function resolveAssetFile(assetId, { admin = false } = {}) {
   const [rows] = await pool.query(
@@ -223,12 +224,12 @@ export async function resolveAssetFile(assetId, { admin = false } = {}) {
   );
   const a = rows[0];
   if (!a || (!admin && a.status !== 'active') || !STORAGE_KEY_RE.test(a.storage_key)) throw notFound('Model not found');
-  return { root: GARMENT_DIR, file: a.storage_key, mime: MIME[a.format], sha256: a.sha256 };
+  return { file: a.storage_key, mime: MIME[a.format], sha256: a.sha256 };
 }
 
 /** Delete the stored model file of a product (call after the product row has been deleted). */
 export async function unlinkStoredModel(storageKey) {
-  if (storageKey && STORAGE_KEY_RE.test(storageKey)) await unlinkQuiet(filePathFor(storageKey));
+  if (storageKey && STORAGE_KEY_RE.test(storageKey)) await removeQuiet(storageKey);
 }
 
 export async function storageKeyForProduct(productId) {

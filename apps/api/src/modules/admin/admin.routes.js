@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import fs from 'node:fs';
 import { z } from 'zod';
 import { pool } from '../../config/db.js';
 import { requireAdmin } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
-import { productImageUpload, verifyImageSignature } from '../../middleware/upload.js';
+import { imageExtForMime, productImageUpload, verifyImageSignature } from '../../middleware/upload.js';
+import { saveProductImage } from '../../storage/index.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { badRequest } from '../../utils/AppError.js';
 
@@ -91,11 +91,12 @@ router.post('/uploads/product-image', (req, res, next) => {
   productImageUpload(req, res, (err) => {
     if (err) return next(err);
     if (!req.file) return next(badRequest('No image file received (field name: image)'));
-    if (!verifyImageSignature(req.file.path)) {
-      fs.unlink(req.file.path, () => {});
+    if (!verifyImageSignature(req.file.buffer)) {
       return next(badRequest('File content is not a valid JPEG, PNG or WebP image'));
     }
-    return res.status(201).json({ url: `/uploads/products/${req.file.filename}`, size: req.file.size });
+    return saveProductImage(req.file.buffer, imageExtForMime(req.file.mimetype))
+      .then((url) => res.status(201).json({ url, size: req.file.size }))
+      .catch(next);
   });
 });
 

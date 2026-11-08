@@ -1,5 +1,4 @@
 import multer from 'multer';
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { env } from '../config/env.js';
@@ -11,18 +10,16 @@ const ALLOWED = {
   'image/webp': '.webp',
 };
 
-/** Upload sub-folder for public product images. Future phases add private folders. */
+/** Local folder for public product images (only used with STORAGE_DRIVER=local; Bunny serves them from the CDN). */
 export const PRODUCT_IMAGE_DIR = path.join(env.uploadDir, 'products');
-fs.mkdirSync(PRODUCT_IMAGE_DIR, { recursive: true });
+if (env.storageDriver !== 'bunny') fs.mkdirSync(PRODUCT_IMAGE_DIR, { recursive: true });
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, PRODUCT_IMAGE_DIR),
-  // Random server-generated filename; the client's name is never used on disk.
-  filename: (_req, file, cb) => cb(null, `${crypto.randomUUID()}${ALLOWED[file.mimetype]}`),
-});
+/** Extension for an allowed image MIME type, e.g. 'image/png' -> 'png'. */
+export const imageExtForMime = (mime) => (ALLOWED[mime] || '').slice(1);
 
+// In memory: nothing is stored (disk or Bunny) until the content signature has been verified.
 export const productImageUpload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: env.maxUploadBytes, files: 1 },
   fileFilter: (_req, file, cb) => {
     if (!ALLOWED[file.mimetype]) return cb(badRequest('Only JPEG, PNG or WebP images are allowed'));
@@ -30,12 +27,16 @@ export const productImageUpload = multer({
   },
 }).single('image');
 
-/** Verify file signature (magic bytes) matches an allowed image type; delete if not. */
-export function verifyImageSignature(filePath) {
-  const buf = Buffer.alloc(12);
-  const fd = fs.openSync(filePath, 'r');
-  fs.readSync(fd, buf, 0, 12, 0);
-  fs.closeSync(fd);
+/** Verify the file signature (magic bytes) matches an allowed image type. Accepts a Buffer (preferred) or a file path. */
+export function verifyImageSignature(source) {
+  let buf = Buffer.alloc(12);
+  if (Buffer.isBuffer(source)) {
+    buf = source.subarray(0, 12);
+  } else {
+    const fd = fs.openSync(source, 'r');
+    fs.readSync(fd, buf, 0, 12, 0);
+    fs.closeSync(fd);
+  }
   const isJpg = buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
   const isPng = buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
   const isWebp = buf.subarray(0, 4).toString() === 'RIFF' && buf.subarray(8, 12).toString() === 'WEBP';
@@ -46,9 +47,9 @@ export function verifyImageSignature(filePath) {
 // Phase 2: private 3D garment model uploads (.glb / .gltf)
 // ---------------------------------------------------------------------------
 
-/** Private folder for 3D models. NOT served statically; files are streamed by an authorised route. */
+/** Local folder for 3D models (only used with STORAGE_DRIVER=local). NOT served statically; streamed by an authorised route. */
 export const GARMENT_DIR = path.join(env.privateDir, 'garments');
-fs.mkdirSync(GARMENT_DIR, { recursive: true });
+if (env.storageDriver !== 'bunny') fs.mkdirSync(GARMENT_DIR, { recursive: true });
 
 const MODEL_FORMATS = { '.glb': 'glb', '.gltf': 'gltf' };
 // Browsers often send application/octet-stream (or an empty type) for .glb; content is verified separately.
@@ -57,11 +58,9 @@ const MODEL_MIMES = new Set(['model/gltf-binary', 'model/gltf+json', 'applicatio
 /** @returns {'glb'|'gltf'|undefined} */
 export const modelFormatFromName = (name) => MODEL_FORMATS[path.extname(String(name)).toLowerCase()];
 
+// In memory: the service validates the model, then writes it to the configured storage under a server-generated name.
 export const garmentModelUpload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, GARMENT_DIR),
-    filename: (_req, file, cb) => cb(null, `${crypto.randomUUID()}.${modelFormatFromName(file.originalname)}`),
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: env.maxModelBytes, files: 1 },
   fileFilter: (_req, file, cb) => {
     if (!modelFormatFromName(file.originalname)) return cb(badRequest('Only .glb or .gltf 3D model files are allowed'));

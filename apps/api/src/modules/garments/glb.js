@@ -73,15 +73,15 @@ function countTriangles(json) {
 
 /**
  * Validate a stored model file and extract the metadata the studio needs.
- * @param {string} filePath absolute path of the uploaded file
+ * @param {string|Buffer} source the uploaded file's bytes (or an absolute file path)
  * @param {'glb'|'gltf'} format
  * @returns {Promise<{format:string, generator:string|null, triangleCount:number, nodeNames:string[],
  *   meshNodeNames:string[], materialNames:string[], unnamedMaterials:number, textureCount:number,
  *   animationCount:number}>}
  * @throws {import('../../utils/AppError.js').AppError} 400 with a clear message when the file is not usable
  */
-export async function inspectModelFile(filePath, format) {
-  const buf = await fs.readFile(filePath);
+export async function inspectModelFile(source, format) {
+  const buf = Buffer.isBuffer(source) ? source : await fs.readFile(source);
   let json;
   if (format === 'glb') {
     json = parseGlbJson(buf);

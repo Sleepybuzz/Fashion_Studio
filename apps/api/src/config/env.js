@@ -44,12 +44,21 @@ export const env = {
   },
   jwtSecret: e.JWT_SECRET || '',
   jwtExpiresIn: e.JWT_EXPIRES_IN || '7d',
-  storageDriver: e.STORAGE_DRIVER || 'local',
+  storageDriver: (e.STORAGE_DRIVER || 'local').trim().toLowerCase(),
   uploadDir: path.resolve(API_ROOT, e.UPLOAD_DIR || 'uploads'),
   maxUploadBytes: (Number(e.MAX_UPLOAD_MB) || 5) * 1024 * 1024,
   // Phase 2: private storage for 3D garment models (never served statically).
   privateDir: path.join(path.resolve(API_ROOT, e.UPLOAD_DIR || 'uploads'), 'private'),
   maxModelBytes: (Number(e.MAX_MODEL_MB) || 25) * 1024 * 1024,
+  // Bunny.net Edge Storage + CDN (only used when STORAGE_DRIVER=bunny). Secrets stay on the server.
+  bunny: {
+    storageZone: (e.BUNNY_STORAGE_ZONE || '').trim(),
+    accessKey: (e.BUNNY_STORAGE_ACCESS_KEY || '').trim(), // the storage zone's password (FTP & API Access)
+    host: (e.BUNNY_STORAGE_HOST || 'storage.bunnycdn.com').trim().replace(/^https?:\/\//, '').replace(/\/+$/, ''),
+    cdnUrl: (e.BUNNY_CDN_URL || '').trim().replace(/\/+$/, ''), // Pull Zone URL, e.g. https://myzone.b-cdn.net
+    basePath: (e.BUNNY_BASE_PATH || '').trim().replace(/^\/+|\/+$/g, ''), // optional folder inside the zone
+    timeoutMs: intEnv(e.BUNNY_TIMEOUT_SECONDS, 60, { min: 5, max: 600 }) * 1000,
+  },
   seed: {
     adminEmail: e.SEED_ADMIN_EMAIL || '',
     adminPassword: e.SEED_ADMIN_PASSWORD || '',

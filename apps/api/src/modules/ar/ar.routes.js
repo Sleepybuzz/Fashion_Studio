@@ -20,7 +20,7 @@ function sendPrivate(res, next, { kind, key, mime, etag }, cache, extra = {}) {
   res.setHeader('Cache-Control', cache);
   if (etag) res.setHeader('ETag', `"${etag}"`);
   for (const [k, v] of Object.entries(extra)) res.setHeader(k, v);
-  res.sendFile(key, { root: storage.dirFor(kind), dotfiles: 'deny' }, (err) => {
+  storage.send(res, kind, key, (err) => {
     if (err && !res.headersSent) next(err.code === 'ENOENT' ? notFound('File not found') : err);
   });
 }
